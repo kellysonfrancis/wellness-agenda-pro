@@ -14,6 +14,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_transactions: {
+        Row: {
+          conta_destino_id: string | null
+          conta_origem_id: string | null
+          created_at: string
+          descricao: string
+          expense_id: string | null
+          id: string
+          payment_id: string | null
+          referencia: string | null
+          tipo: Database["public"]["Enums"]["transaction_type"]
+          valor: number
+        }
+        Insert: {
+          conta_destino_id?: string | null
+          conta_origem_id?: string | null
+          created_at?: string
+          descricao: string
+          expense_id?: string | null
+          id?: string
+          payment_id?: string | null
+          referencia?: string | null
+          tipo: Database["public"]["Enums"]["transaction_type"]
+          valor?: number
+        }
+        Update: {
+          conta_destino_id?: string | null
+          conta_origem_id?: string | null
+          created_at?: string
+          descricao?: string
+          expense_id?: string | null
+          id?: string
+          payment_id?: string | null
+          referencia?: string | null
+          tipo?: Database["public"]["Enums"]["transaction_type"]
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_transactions_conta_destino_id_fkey"
+            columns: ["conta_destino_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_transactions_conta_origem_id_fkey"
+            columns: ["conta_origem_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_transactions_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_transactions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           client_id: string
@@ -81,6 +149,42 @@ export type Database = {
           },
         ]
       }
+      bank_accounts: {
+        Row: {
+          ativo: boolean
+          banco: string | null
+          created_at: string
+          id: string
+          nome: string
+          saldo_atual: number
+          saldo_inicial: number
+          tipo: Database["public"]["Enums"]["bank_account_type"]
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          banco?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          saldo_atual?: number
+          saldo_inicial?: number
+          tipo: Database["public"]["Enums"]["bank_account_type"]
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          banco?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          saldo_atual?: number
+          saldo_inicial?: number
+          tipo?: Database["public"]["Enums"]["bank_account_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           ativo: boolean
@@ -146,6 +250,126 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      expenses: {
+        Row: {
+          categoria: Database["public"]["Enums"]["expense_category"]
+          conta_origem_id: string | null
+          created_at: string
+          data_vencimento: string
+          descricao: string
+          id: string
+          pago: boolean
+          pago_em: string | null
+          recorrente: boolean
+          tipo: Database["public"]["Enums"]["expense_type"]
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          categoria?: Database["public"]["Enums"]["expense_category"]
+          conta_origem_id?: string | null
+          created_at?: string
+          data_vencimento: string
+          descricao: string
+          id?: string
+          pago?: boolean
+          pago_em?: string | null
+          recorrente?: boolean
+          tipo: Database["public"]["Enums"]["expense_type"]
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          categoria?: Database["public"]["Enums"]["expense_category"]
+          conta_origem_id?: string | null
+          created_at?: string
+          data_vencimento?: string
+          descricao?: string
+          id?: string
+          pago?: boolean
+          pago_em?: string | null
+          recorrente?: boolean
+          tipo?: Database["public"]["Enums"]["expense_type"]
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_conta_origem_id_fkey"
+            columns: ["conta_origem_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          appointment_id: string | null
+          client_id: string
+          conta_destino_id: string | null
+          created_at: string
+          id: string
+          metodo: Database["public"]["Enums"]["payment_method"]
+          pago_em: string | null
+          referencia: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+          valor_pago: number
+          valor_total: number
+        }
+        Insert: {
+          appointment_id?: string | null
+          client_id: string
+          conta_destino_id?: string | null
+          created_at?: string
+          id?: string
+          metodo?: Database["public"]["Enums"]["payment_method"]
+          pago_em?: string | null
+          referencia?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          valor_pago?: number
+          valor_total?: number
+        }
+        Update: {
+          appointment_id?: string | null
+          client_id?: string
+          conta_destino_id?: string | null
+          created_at?: string
+          id?: string
+          metodo?: Database["public"]["Enums"]["payment_method"]
+          pago_em?: string | null
+          referencia?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          valor_pago?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_conta_destino_id_fkey"
+            columns: ["conta_destino_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_plans: {
         Row: {
@@ -368,12 +592,26 @@ export type Database = {
         | "concluido"
         | "faltou"
         | "cancelado"
+      bank_account_type: "corrente" | "caixa" | "digital" | "maquininha"
       categoria: "pilates" | "fisioterapia" | "estetica"
+      expense_category:
+        | "aluguel"
+        | "salarios"
+        | "materiais"
+        | "equipamentos"
+        | "marketing"
+        | "manutencao"
+        | "impostos"
+        | "outros"
+      expense_type: "fixa" | "variavel"
+      payment_method: "pix" | "cartao" | "dinheiro" | "transferencia" | "outro"
+      payment_status: "pendente" | "pago" | "parcial" | "estornado" | "isento"
       plan_type:
         | "mensal_recorrente"
         | "pacote_creditos"
         | "combo_itens"
         | "creditos_estetica"
+      transaction_type: "entrada" | "saida" | "transferencia"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -511,13 +749,28 @@ export const Constants = {
         "faltou",
         "cancelado",
       ],
+      bank_account_type: ["corrente", "caixa", "digital", "maquininha"],
       categoria: ["pilates", "fisioterapia", "estetica"],
+      expense_category: [
+        "aluguel",
+        "salarios",
+        "materiais",
+        "equipamentos",
+        "marketing",
+        "manutencao",
+        "impostos",
+        "outros",
+      ],
+      expense_type: ["fixa", "variavel"],
+      payment_method: ["pix", "cartao", "dinheiro", "transferencia", "outro"],
+      payment_status: ["pendente", "pago", "parcial", "estornado", "isento"],
       plan_type: [
         "mensal_recorrente",
         "pacote_creditos",
         "combo_itens",
         "creditos_estetica",
       ],
+      transaction_type: ["entrada", "saida", "transferencia"],
     },
   },
 } as const
