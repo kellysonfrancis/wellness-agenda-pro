@@ -1,12 +1,9 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import {
-  mockAppointments, mockServices, mockProfessionals, mockClients,
-  getClientName, getServiceName, getProfessionalName,
-} from "@/data/mockData";
 import { Calendar, ChevronLeft, ChevronRight, Filter, X, Loader2, Plus } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
-import type { Appointment, AppointmentStatus, Categoria } from "@/types/clinic";
+import type { Categoria, AppointmentStatus } from "@/types/clinic";
 import { toast } from "@/hooks/use-toast";
+import { useAgendaData, type DBService, type DBAppointment } from "@/hooks/useAgendaData";
 
 const statusBorderColors: Record<AppointmentStatus, string> = {
   reservado: "border-l-warning",
@@ -68,15 +65,17 @@ const emptyForm: NewAppointmentForm = {
 };
 
 export default function Agenda() {
-  const [appointments, setAppointments] = useState<Appointment[]>([...mockAppointments]);
+  const {
+    appointments, clients, services, professionals, loading,
+    createAppointment, getClientName, getServiceName, getProfessionalName,
+  } = useAgendaData();
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [filterProfissional, setFilterProfissional] = useState("");
   const [filterServico, setFilterServico] = useState("");
   const [filterCategoria, setFilterCategoria] = useState<Categoria | "">("");
   const [showFilters, setShowFilters] = useState(false);
-
-  // New appointment modal
   const [showNewModal, setShowNewModal] = useState(false);
   const [form, setForm] = useState<NewAppointmentForm>({ ...emptyForm });
 
@@ -84,20 +83,20 @@ export default function Agenda() {
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate.toDateString()]);
   const viewDays = viewMode === "week" ? weekDays : [currentDate];
 
-  const categorias = useMemo(() => [...new Set(mockServices.map((s) => s.categoria))], []);
+  const categorias = useMemo(() => [...new Set(services.map((s) => s.categoria as Categoria))], [services]);
 
   const serviceMap = useMemo(() => {
-    const map: Record<string, typeof mockServices[0]> = {};
-    mockServices.forEach((s) => (map[s.id] = s));
+    const map: Record<string, DBService> = {};
+    services.forEach((s) => (map[s.id] = s));
     return map;
-  }, []);
+  }, [services]);
 
   const filtered = useMemo(() => {
     return appointments.filter((a) => {
-      if (filterProfissional && a.profissionalId !== filterProfissional) return false;
-      if (filterServico && a.serviceId !== filterServico) return false;
+      if (filterProfissional && a.profissional_id !== filterProfissional) return false;
+      if (filterServico && a.service_id !== filterServico) return false;
       if (filterCategoria) {
-        const svc = serviceMap[a.serviceId];
+        const svc = serviceMap[a.service_id];
         if (!svc || svc.categoria !== filterCategoria) return false;
       }
       return true;
@@ -114,7 +113,7 @@ export default function Agenda() {
 
   const getEventsForDayHour = (day: Date, hour: number) => {
     return filtered.filter((a) => {
-      const start = new Date(a.inicioEm);
+      const start = new Date(a.inicio_em);
       return isSameDay(start, day) && start.getHours() === hour;
     });
   };
@@ -133,7 +132,6 @@ export default function Agenda() {
       })()
     : currentDate.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-  // Open modal with pre-filled date/time
   const openNewModal = useCallback((day?: Date, hour?: number) => {
     const d = day || new Date();
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -142,7 +140,7 @@ export default function Agenda() {
     setShowNewModal(true);
   }, []);
 
-  const handleCreate = useCallback(() => {
+  const handleCreate = useCallback(async () => {
     if (!form.clientId || !form.serviceId || !form.profissionalId || !form.date || !form.startTime) {
       toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
@@ -152,38 +150,39 @@ export default function Agenda() {
     if (!svc) return;
 
     const startDate = new Date(`${form.date}T${form.startTime}:00`);
-    const endDate = new Date(startDate.getTime() + svc.duracaoMin * 60000);
+    const endDate = new Date(startDate.getTime() + svc.duracao_min * 60000);
 
-    const newAppt: Appointment = {
-      id: `a-${Date.now()}`,
-      clientId: form.clientId,
-      serviceId: form.serviceId,
-      profissionalId: form.profissionalId,
-      inicioEm: startDate.toISOString(),
-      fimEm: endDate.toISOString(),
-      status: "reservado",
-      origem: "recepcao",
-      observacoes: form.observacoes || null,
-    };
+    const result = await createAppointment({
+      client_id: form.clientId,
+      service_id: form.serviceId,
+      profissional_id: form.profissionalId,
+      inicio_em: startDate.toISOString(),
+      fim_em: endDate.toISOString(),
+      observacoes: form.observacoes || undefined,
+    });
 
-    setAppointments((prev) => [...prev, newAppt]);
-    setShowNewModal(false);
-    setForm({ ...emptyForm });
-    toast({ title: "Agendamento criado!", description: `${getClientName(form.clientId)} — ${svc.nome}` });
-  }, [form, serviceMap]);
+    if (result) {
+      setShowNewModal(false);
+      setForm({ ...emptyForm });
+      toast({ title: "Agendamento criado!", description: `${getClientName(form.clientId)} — ${svc.nome}` });
+    }
+  }, [form, serviceMap, createAppointment, getClientName]);
 
-  // Filter services based on selected category
-  const filteredServices = useMemo(() => {
-    const selectedCat = form.serviceId ? serviceMap[form.serviceId]?.categoria : null;
-    return mockServices.filter((s) => s.ativo);
-  }, [form.serviceId, serviceMap]);
-
-  // Filter professionals based on selected service's category
   const filteredProfessionals = useMemo(() => {
     const svc = form.serviceId ? serviceMap[form.serviceId] : null;
-    if (!svc) return mockProfessionals.filter((p) => p.ativo);
-    return mockProfessionals.filter((p) => p.ativo && p.especialidades.includes(svc.categoria));
-  }, [form.serviceId, serviceMap]);
+    if (!svc) return professionals.filter((p) => p.ativo);
+    return professionals.filter((p) => p.ativo && p.especialidades.includes(svc.categoria));
+  }, [form.serviceId, serviceMap, professionals]);
+
+  if (loading) {
+    return (
+      <GlobalLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </GlobalLayout>
+    );
+  }
 
   return (
     <GlobalLayout>
@@ -195,9 +194,7 @@ export default function Agenda() {
             <h1 className="text-xl font-bold capitalize">{monthLabel}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={goToday} className="px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">
-              Hoje
-            </button>
+            <button onClick={goToday} className="px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">Hoje</button>
             <div className="flex items-center rounded-lg border border-border overflow-hidden">
               <button onClick={() => navigateWeek(-1)} className="p-1.5 hover:bg-muted transition-colors"><ChevronLeft className="h-4 w-4" /></button>
               <button onClick={() => navigateWeek(1)} className="p-1.5 hover:bg-muted transition-colors"><ChevronRight className="h-4 w-4" /></button>
@@ -230,11 +227,11 @@ export default function Agenda() {
             </select>
             <select value={filterProfissional} onChange={(e) => setFilterProfissional(e.target.value)} className="text-sm rounded-lg border border-input bg-background px-3 py-1.5">
               <option value="">Todos os profissionais</option>
-              {mockProfessionals.filter((p) => p.ativo).map((p) => <option key={p.id} value={p.id}>{p.nomeExibicao}</option>)}
+              {professionals.filter((p) => p.ativo).map((p) => <option key={p.id} value={p.id}>{p.nome_exibicao}</option>)}
             </select>
             <select value={filterServico} onChange={(e) => setFilterServico(e.target.value)} className="text-sm rounded-lg border border-input bg-background px-3 py-1.5">
               <option value="">Todos os serviços</option>
-              {mockServices.filter((s) => s.ativo && (!filterCategoria || s.categoria === filterCategoria)).map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+              {services.filter((s) => s.ativo && (!filterCategoria || s.categoria === filterCategoria)).map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
             </select>
             {activeFiltersCount > 0 && (
               <button onClick={() => { setFilterCategoria(""); setFilterProfissional(""); setFilterServico(""); }} className="text-sm text-destructive hover:underline px-2">Limpar filtros</button>
@@ -284,23 +281,23 @@ export default function Agenda() {
                         onClick={() => openNewModal(day, hour)}
                       >
                         {events.map((evt) => {
-                          const start = new Date(evt.inicioEm);
-                          const end = new Date(evt.fimEm);
+                          const start = new Date(evt.inicio_em);
+                          const end = new Date(evt.fim_em);
                           const durationMin = (end.getTime() - start.getTime()) / 60000;
                           const heightPx = Math.max(24, (durationMin / 60) * 64);
-                          const svc = serviceMap[evt.serviceId];
-                          const catColor = svc ? categoryColors[svc.categoria] : "bg-muted text-muted-foreground";
+                          const svc = serviceMap[evt.service_id];
+                          const catColor = svc ? categoryColors[svc.categoria as Categoria] : "bg-muted text-muted-foreground";
 
                           return (
                             <div
                               key={evt.id}
-                              className={`rounded-md px-1.5 py-1 mb-0.5 border-l-[3px] cursor-default hover:opacity-80 transition-opacity overflow-hidden ${catColor} ${statusBorderColors[evt.status]}`}
+                              className={`rounded-md px-1.5 py-1 mb-0.5 border-l-[3px] cursor-default hover:opacity-80 transition-opacity overflow-hidden ${catColor} ${statusBorderColors[evt.status as AppointmentStatus] || ""}`}
                               style={{ minHeight: `${Math.min(heightPx, 128)}px` }}
-                              title={`${getClientName(evt.clientId)} — ${getServiceName(evt.serviceId)}\n${getProfessionalName(evt.profissionalId)}\nStatus: ${evt.status}`}
+                              title={`${getClientName(evt.client_id)} — ${getServiceName(evt.service_id)}\n${getProfessionalName(evt.profissional_id)}\nStatus: ${evt.status}`}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <p className="text-[11px] font-semibold truncate leading-tight">{getClientName(evt.clientId)}</p>
-                              <p className="text-[10px] truncate leading-tight opacity-80">{getServiceName(evt.serviceId)}</p>
+                              <p className="text-[11px] font-semibold truncate leading-tight">{getClientName(evt.client_id)}</p>
+                              <p className="text-[10px] truncate leading-tight opacity-80">{getServiceName(evt.service_id)}</p>
                               <p className="text-[10px] truncate leading-tight opacity-60">
                                 {start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} – {end.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                               </p>
@@ -340,116 +337,68 @@ export default function Agenda() {
             </div>
 
             <div className="space-y-3">
-              {/* Cliente */}
               <div>
                 <label className="text-sm text-muted-foreground" htmlFor="appt-client">Cliente *</label>
-                <select
-                  id="appt-client"
-                  value={form.clientId}
-                  onChange={(e) => setForm({ ...form, clientId: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-                >
+                <select id="appt-client" value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.target.value })} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30">
                   <option value="">Selecione o cliente</option>
-                  {mockClients.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  {clients.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
               </div>
 
-              {/* Serviço */}
               <div>
                 <label className="text-sm text-muted-foreground" htmlFor="appt-service">Serviço *</label>
-                <select
-                  id="appt-service"
-                  value={form.serviceId}
-                  onChange={(e) => setForm({ ...form, serviceId: e.target.value, profissionalId: "" })}
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-                >
+                <select id="appt-service" value={form.serviceId} onChange={(e) => setForm({ ...form, serviceId: e.target.value, profissionalId: "" })} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30">
                   <option value="">Selecione o serviço</option>
-                  {mockServices.filter((s) => s.ativo).map((s) => (
-                    <option key={s.id} value={s.id}>{s.nome} ({s.duracaoMin}min — R$ {s.precoBase})</option>
+                  {services.filter((s) => s.ativo).map((s) => (
+                    <option key={s.id} value={s.id}>{s.nome} ({s.duracao_min}min — R$ {s.preco_base})</option>
                   ))}
                 </select>
               </div>
 
-              {/* Profissional */}
               <div>
                 <label className="text-sm text-muted-foreground" htmlFor="appt-prof">Profissional *</label>
-                <select
-                  id="appt-prof"
-                  value={form.profissionalId}
-                  onChange={(e) => setForm({ ...form, profissionalId: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-                >
+                <select id="appt-prof" value={form.profissionalId} onChange={(e) => setForm({ ...form, profissionalId: e.target.value })} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30">
                   <option value="">Selecione o profissional</option>
-                  {filteredProfessionals.map((p) => <option key={p.id} value={p.id}>{p.nomeExibicao}</option>)}
+                  {filteredProfessionals.map((p) => <option key={p.id} value={p.id}>{p.nome_exibicao}</option>)}
                 </select>
                 {form.serviceId && filteredProfessionals.length === 0 && (
                   <p className="text-xs text-destructive mt-1">Nenhum profissional disponível para este serviço</p>
                 )}
               </div>
 
-              {/* Data e hora */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm text-muted-foreground" htmlFor="appt-date">Data *</label>
-                  <input
-                    id="appt-date"
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-                  />
+                  <input id="appt-date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30" />
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground" htmlFor="appt-time">Horário *</label>
-                  <input
-                    id="appt-time"
-                    type="time"
-                    value={form.startTime}
-                    onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-                  />
+                  <input id="appt-time" type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30" />
                 </div>
               </div>
 
-              {/* Duração info */}
               {form.serviceId && serviceMap[form.serviceId] && (
                 <p className="text-xs text-muted-foreground">
-                  Duração: {serviceMap[form.serviceId].duracaoMin} minutos
+                  Duração: {serviceMap[form.serviceId].duracao_min} minutos
                   {form.startTime && ` — Término previsto: ${(() => {
                     const [h, m] = form.startTime.split(":").map(Number);
-                    const end = new Date(2000, 0, 1, h, m + serviceMap[form.serviceId].duracaoMin);
+                    const end = new Date(2000, 0, 1, h, m + serviceMap[form.serviceId].duracao_min);
                     return end.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
                   })()}`}
                 </p>
               )}
 
-              {/* Observações */}
               <div>
                 <label className="text-sm text-muted-foreground" htmlFor="appt-obs">Observações</label>
-                <textarea
-                  id="appt-obs"
-                  value={form.observacoes}
-                  onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
-                  rows={2}
-                  maxLength={500}
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none"
-                  placeholder="Observações opcionais..."
-                />
+                <textarea id="appt-obs" value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} rows={2} maxLength={500} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none" placeholder="Observações opcionais..." />
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex gap-2 mt-5">
-              <button
-                onClick={handleCreate}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-              >
+              <button onClick={handleCreate} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
                 <Plus className="h-4 w-4" /> Agendar
               </button>
-              <button
-                onClick={() => setShowNewModal(false)}
-                className="px-4 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
-              >
+              <button onClick={() => setShowNewModal(false)} className="px-4 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">
                 Cancelar
               </button>
             </div>
