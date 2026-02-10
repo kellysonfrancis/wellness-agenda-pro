@@ -9,12 +9,12 @@ import {
 import { useState, useEffect, useRef } from "react";
 
 const SIDEBAR_THEMES = [
-  { id: "default", label: "Padrão", color: "hsl(333 71% 50%)" },
-  { id: "teal", label: "Teal", color: "hsl(172 60% 50%)" },
-  { id: "blue", label: "Azul", color: "hsl(210 80% 60%)" },
-  { id: "purple", label: "Roxo", color: "hsl(270 70% 65%)" },
-  { id: "neutral", label: "Neutro", color: "hsl(0 0% 70%)" },
-  { id: "custom", label: "Personalizado", color: "" },
+  { id: "default", label: "Rosa", color: "hsl(333 71% 50%)", bg: "hsl(333 30% 14%)" },
+  { id: "teal", label: "Teal", color: "hsl(172 60% 50%)", bg: "hsl(172 40% 12%)" },
+  { id: "blue", label: "Azul", color: "hsl(210 80% 60%)", bg: "hsl(220 30% 12%)" },
+  { id: "purple", label: "Roxo", color: "hsl(270 70% 65%)", bg: "hsl(270 25% 12%)" },
+  { id: "neutral", label: "Neutro", color: "hsl(0 0% 70%)", bg: "hsl(0 0% 10%)" },
+  { id: "custom", label: "Personalizado", color: "" , bg: "" },
 ] as const;
 
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
