@@ -363,60 +363,63 @@ export default function Comissoes() {
         </div>
       </div>
 
-      {/* Monthly Chart */}
-      {monthlyData.length > 0 && (
-        <div className="bg-card rounded-xl border border-border shadow-sm p-5 mb-6">
-          <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
-            <TrendingUp className="h-4 w-4 text-primary" /> Comissões por Mês
-          </h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={monthlyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="mes" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
-              <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-              <RechartsTooltip
-                formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, undefined]}
-                contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
-              />
-              <Legend />
-              <Bar dataKey="Vendas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Comissões" fill="hsl(var(--primary) / 0.5)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Pagas" fill="hsl(var(--success, 142 71% 45%))" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      {/* Charts side by side */}
+      {(monthlyData.length > 0 || categoryData.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {monthlyData.length > 0 && (
+            <div className="bg-card rounded-xl border border-border shadow-sm p-5">
+              <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+                <TrendingUp className="h-4 w-4 text-primary" /> Comissões por Mês
+              </h3>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={monthlyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="mes" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                  <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                  <RechartsTooltip
+                    formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, undefined]}
+                    contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
+                  />
+                  <Legend />
+                  <Bar dataKey="Vendas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Comissões" fill="hsl(var(--primary) / 0.5)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Pagas" fill="hsl(var(--success, 142 71% 45%))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
-      {/* Category Pie Chart */}
-      {categoryData.length > 0 && (
-        <div className="bg-card rounded-xl border border-border shadow-sm p-5 mb-6">
-          <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
-            <DollarSign className="h-4 w-4 text-primary" /> Comissões por Categoria
-          </h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie
-                data={categoryData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={4}
-                dataKey="value"
-                nameKey="name"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              >
-                {categoryData.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                ))}
-              </Pie>
-              <RechartsTooltip
-                formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Comissão"]}
-                contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
-              />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          {categoryData.length > 0 && (
+            <div className="bg-card rounded-xl border border-border shadow-sm p-5">
+              <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+                <DollarSign className="h-4 w-4 text-primary" /> Comissões por Categoria
+              </h3>
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={4}
+                    dataKey="value"
+                    nameKey="name"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {categoryData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Comissão"]}
+                    contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       )}
 
