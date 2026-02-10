@@ -855,6 +855,70 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist: {
+        Row: {
+          client_id: string
+          created_at: string
+          dia_semana: string | null
+          horario_preferido: string | null
+          id: string
+          notificado_em: string | null
+          observacoes: string | null
+          profissional_id: string | null
+          service_id: string
+          status: Database["public"]["Enums"]["waitlist_status"]
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          dia_semana?: string | null
+          horario_preferido?: string | null
+          id?: string
+          notificado_em?: string | null
+          observacoes?: string | null
+          profissional_id?: string | null
+          service_id: string
+          status?: Database["public"]["Enums"]["waitlist_status"]
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          dia_semana?: string | null
+          horario_preferido?: string | null
+          id?: string
+          notificado_em?: string | null
+          observacoes?: string | null
+          profissional_id?: string | null
+          service_id?: string
+          status?: Database["public"]["Enums"]["waitlist_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -903,6 +967,12 @@ export type Database = {
         | "combo_itens"
         | "creditos_estetica"
       transaction_type: "entrada" | "saida" | "transferencia"
+      waitlist_status:
+        | "aguardando"
+        | "notificado"
+        | "agendado"
+        | "expirado"
+        | "cancelado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1063,6 +1133,13 @@ export const Constants = {
         "creditos_estetica",
       ],
       transaction_type: ["entrada", "saida", "transferencia"],
+      waitlist_status: [
+        "aguardando",
+        "notificado",
+        "agendado",
+        "expirado",
+        "cancelado",
+      ],
     },
   },
 } as const
