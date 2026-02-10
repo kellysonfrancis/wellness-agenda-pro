@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Palette, Sparkles, Moon, Sun, RotateCcw } from "lucide-react";
+import { Palette, Sparkles, Moon, Sun, RotateCcw, Pipette } from "lucide-react";
 
 /* ── Sidebar theme presets ── */
 const SIDEBAR_THEMES = [
@@ -30,6 +30,107 @@ const PALETTE_TOKENS: PaletteToken[] = [
   { key: "warning", label: "Alerta", cssVar: "--warning" },
   { key: "info", label: "Info", cssVar: "--info" },
 ];
+
+type HSL = { h: number; s: number; l: number };
+type PaletteMap = Record<string, HSL>;
+
+interface PresetPalette {
+  id: string;
+  label: string;
+  preview: string[]; // hex colors for visual preview
+  values: PaletteMap;
+}
+
+const PRESET_PALETTES: PresetPalette[] = [
+  {
+    id: "rosa-clinico",
+    label: "Rosa Clínico",
+    preview: ["#c2185b", "#f8bbd0", "#fce4ec", "#f5f5f5"],
+    values: {
+      primary: { h: 333, s: 71, l: 50 }, secondary: { h: 240, s: 5, l: 33 },
+      accent: { h: 355, s: 100, l: 97 }, background: { h: 240, s: 4, l: 95 },
+      card: { h: 0, s: 0, l: 98 }, muted: { h: 240, s: 4, l: 83 },
+      destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
+      warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
+    },
+  },
+  {
+    id: "azul-oceano",
+    label: "Azul Oceano",
+    preview: ["#1565c0", "#90caf9", "#e3f2fd", "#fafafa"],
+    values: {
+      primary: { h: 210, s: 80, l: 45 }, secondary: { h: 210, s: 15, l: 35 },
+      accent: { h: 210, s: 100, l: 95 }, background: { h: 210, s: 10, l: 96 },
+      card: { h: 210, s: 10, l: 99 }, muted: { h: 210, s: 10, l: 85 },
+      destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
+      warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
+    },
+  },
+  {
+    id: "verde-natureza",
+    label: "Verde Natureza",
+    preview: ["#2e7d32", "#a5d6a7", "#e8f5e9", "#fafafa"],
+    values: {
+      primary: { h: 130, s: 55, l: 40 }, secondary: { h: 130, s: 10, l: 35 },
+      accent: { h: 130, s: 80, l: 95 }, background: { h: 130, s: 8, l: 96 },
+      card: { h: 130, s: 8, l: 99 }, muted: { h: 130, s: 8, l: 85 },
+      destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
+      warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
+    },
+  },
+  {
+    id: "roxo-elegante",
+    label: "Roxo Elegante",
+    preview: ["#7b1fa2", "#ce93d8", "#f3e5f5", "#fafafa"],
+    values: {
+      primary: { h: 280, s: 65, l: 50 }, secondary: { h: 280, s: 10, l: 35 },
+      accent: { h: 280, s: 80, l: 95 }, background: { h: 280, s: 8, l: 96 },
+      card: { h: 280, s: 8, l: 99 }, muted: { h: 280, s: 8, l: 85 },
+      destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
+      warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
+    },
+  },
+  {
+    id: "laranja-quente",
+    label: "Laranja Quente",
+    preview: ["#e65100", "#ffcc80", "#fff3e0", "#fafafa"],
+    values: {
+      primary: { h: 24, s: 85, l: 50 }, secondary: { h: 24, s: 10, l: 35 },
+      accent: { h: 24, s: 100, l: 95 }, background: { h: 30, s: 8, l: 96 },
+      card: { h: 30, s: 8, l: 99 }, muted: { h: 30, s: 8, l: 85 },
+      destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
+      warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
+    },
+  },
+  {
+    id: "cinza-moderno",
+    label: "Cinza Moderno",
+    preview: ["#455a64", "#b0bec5", "#eceff1", "#fafafa"],
+    values: {
+      primary: { h: 200, s: 18, l: 40 }, secondary: { h: 200, s: 10, l: 35 },
+      accent: { h: 200, s: 15, l: 95 }, background: { h: 200, s: 5, l: 96 },
+      card: { h: 200, s: 5, l: 99 }, muted: { h: 200, s: 5, l: 85 },
+      destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
+      warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
+    },
+  },
+];
+
+/** Generate a full palette from a single base color */
+function generatePaletteFromColor(base: HSL): PaletteMap {
+  return {
+    primary: { h: base.h, s: base.s, l: base.l },
+    secondary: { h: base.h, s: Math.round(base.s * 0.15), l: 33 },
+    accent: { h: base.h, s: Math.min(base.s + 20, 100), l: 95 },
+    background: { h: base.h, s: Math.round(base.s * 0.1), l: 96 },
+    card: { h: base.h, s: Math.round(base.s * 0.1), l: 99 },
+    muted: { h: base.h, s: Math.round(base.s * 0.1), l: 85 },
+    destructive: { h: 0, s: 72, l: 50 },
+    success: { h: 152, s: 60, l: 40 },
+    warning: { h: 38, s: 92, l: 50 },
+    info: { h: 205, s: 80, l: 50 },
+  };
+}
 
 function getComputedHsl(cssVar: string): { h: number; s: number; l: number } {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
@@ -153,12 +254,29 @@ export default function ThemeCustomizer() {
     });
   }, [palette]);
 
-  const updatePalette = (key: string, field: "h" | "s" | "l", value: number) => {
-    setPalette((prev) => {
-      const next = { ...prev, [key]: { ...prev[key], [field]: value } };
-      localStorage.setItem(`palette-${key}`, JSON.stringify(next[key]));
-      return next;
+  const applyFullPalette = (values: PaletteMap) => {
+    const next: PaletteMap = {};
+    PALETTE_TOKENS.forEach((t) => {
+      const val = values[t.key];
+      if (val) {
+        next[t.key] = val;
+        localStorage.setItem(`palette-${t.key}`, JSON.stringify(val));
+        document.documentElement.style.setProperty(t.cssVar, `${val.h} ${val.s}% ${val.l}%`);
+      }
     });
+    setPalette(next);
+    localStorage.setItem("palette-preset", "custom");
+  };
+
+  const applyPreset = (preset: PresetPalette) => {
+    applyFullPalette(preset.values);
+    localStorage.setItem("palette-preset", preset.id);
+  };
+
+  const generateFromColor = (hex: string) => {
+    const base = hexToHsl(hex);
+    const generated = generatePaletteFromColor(base);
+    applyFullPalette(generated);
   };
 
   const resetPalette = () => {
@@ -166,10 +284,13 @@ export default function ThemeCustomizer() {
       localStorage.removeItem(`palette-${t.key}`);
       document.documentElement.style.removeProperty(t.cssVar);
     });
-    const fresh: Record<string, { h: number; s: number; l: number }> = {};
+    localStorage.removeItem("palette-preset");
+    const fresh: PaletteMap = {};
     PALETTE_TOKENS.forEach((t) => { fresh[t.key] = getComputedHsl(t.cssVar); });
     setPalette(fresh);
   };
+
+  const activePreset = localStorage.getItem("palette-preset") || "";
 
   const inputClass = "flex-1 h-1.5 accent-primary cursor-pointer";
 
@@ -300,7 +421,7 @@ export default function ThemeCustomizer() {
       </div>
 
       {/* Global Palette */}
-      <div className="bg-card rounded-xl border border-border shadow-sm p-5 space-y-4">
+      <div className="bg-card rounded-xl border border-border shadow-sm p-5 space-y-5">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <Palette className="h-4 w-4 text-primary" /> Paleta de Cores
@@ -309,51 +430,74 @@ export default function ThemeCustomizer() {
             <RotateCcw className="h-3.5 w-3.5" /> Restaurar padrão
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">Ajuste as cores globais do sistema. As mudanças são aplicadas em tempo real.</p>
 
-        <div className="grid gap-4">
-          {PALETTE_TOKENS.map((token) => {
-            const val = palette[token.key];
-            if (!val) return null;
-            return (
-              <div key={token.key} className="bg-muted/20 rounded-lg p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium">{token.label}</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={hslToHex(val.h, val.s, val.l)}
-                      onChange={(e) => {
-                        const hsl = hexToHsl(e.target.value);
-                        updatePalette(token.key, "h", hsl.h);
-                        updatePalette(token.key, "s", hsl.s);
-                        updatePalette(token.key, "l", hsl.l);
-                      }}
-                      className="h-6 w-8 rounded border border-border cursor-pointer bg-transparent"
+        {/* Preset palettes */}
+        <div>
+          <p className="text-xs text-muted-foreground mb-3">Escolha uma paleta pronta:</p>
+          <div className="grid grid-cols-2 gap-2">
+            {PRESET_PALETTES.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => applyPreset(preset)}
+                className={`flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
+                  activePreset === preset.id
+                    ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                    : "border-border hover:border-primary/40 hover:bg-muted/30"
+                }`}
+              >
+                <div className="flex -space-x-1">
+                  {preset.preview.map((color, i) => (
+                    <div
+                      key={i}
+                      className="h-6 w-6 rounded-full border-2 border-card"
+                      style={{ backgroundColor: color }}
                     />
-                    <span className="text-[10px] text-muted-foreground font-mono">{val.h} {val.s}% {val.l}%</span>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  {([
-                    { field: "h" as const, label: "H", max: 360 },
-                    { field: "s" as const, label: "S", max: 100 },
-                    { field: "l" as const, label: "L", max: 100 },
-                  ]).map(({ field, label, max }) => (
-                    <div key={field} className="flex items-center gap-2">
-                      <span className="text-[10px] text-muted-foreground w-3">{label}</span>
-                      <input
-                        type="range" min={0} max={max} value={val[field]}
-                        onChange={(e) => updatePalette(token.key, field, Number(e.target.value))}
-                        className={inputClass}
-                      />
-                      <span className="text-[10px] text-muted-foreground w-8 text-right">{val[field]}{field === "h" ? "°" : "%"}</span>
-                    </div>
                   ))}
                 </div>
-              </div>
-            );
-          })}
+                <span className="text-xs font-medium">{preset.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Generate from color */}
+        <div className="border-t border-border pt-4">
+          <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5">
+            <Pipette className="h-3.5 w-3.5" />
+            Ou gere uma paleta a partir de qualquer cor:
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={palette.primary ? hslToHex(palette.primary.h, palette.primary.s, palette.primary.l) : "#c2185b"}
+              onChange={(e) => generateFromColor(e.target.value)}
+              className="h-10 w-14 rounded-lg border border-border cursor-pointer bg-transparent"
+            />
+            <span className="text-xs text-muted-foreground">
+              Clique para escolher a cor principal — as demais serão geradas automaticamente
+            </span>
+          </div>
+        </div>
+
+        {/* Current palette preview */}
+        <div className="border-t border-border pt-4">
+          <p className="text-xs text-muted-foreground mb-2">Paleta atual:</p>
+          <div className="flex flex-wrap gap-2">
+            {PALETTE_TOKENS.map((token) => {
+              const val = palette[token.key];
+              if (!val) return null;
+              return (
+                <div key={token.key} className="flex flex-col items-center gap-1">
+                  <div
+                    className="h-8 w-8 rounded-lg border border-border shadow-sm"
+                    style={{ backgroundColor: `hsl(${val.h} ${val.s}% ${val.l}%)` }}
+                    title={`${token.label}: ${val.h} ${val.s}% ${val.l}%`}
+                  />
+                  <span className="text-[9px] text-muted-foreground">{token.label}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
