@@ -13,6 +13,8 @@ interface LandingConfig {
   cor_fundo: string;
   cor_texto: string;
   link_instagram: string | null;
+  mensagem_boas_vindas: string | null;
+  horario_funcionamento: string | null;
 }
 
 export default function LandingConfigEditor() {
@@ -87,6 +89,8 @@ export default function LandingConfigEditor() {
         cor_fundo: config.cor_fundo,
         cor_texto: config.cor_texto,
         link_instagram: config.link_instagram,
+        mensagem_boas_vindas: config.mensagem_boas_vindas,
+        horario_funcionamento: config.horario_funcionamento,
       } as any)
       .eq("id", config.id);
     if (error) {
@@ -242,9 +246,25 @@ export default function LandingConfigEditor() {
             <p className="text-xs opacity-80" style={{ color: "#fff" }}>{config.subtitulo}</p>
           </div>
           <div className="p-4 text-center" style={{ color: config.cor_texto }}>
-            <p className="text-sm">Escolha o serviço, profissional, data e horário...</p>
+            {config.mensagem_boas_vindas && <p className="text-sm mb-2">{config.mensagem_boas_vindas}</p>}
+            {config.horario_funcionamento && <p className="text-xs opacity-70">{config.horario_funcionamento}</p>}
+            {!config.mensagem_boas_vindas && !config.horario_funcionamento && <p className="text-sm">Escolha o serviço, profissional, data e horário...</p>}
           </div>
         </div>
+      </div>
+
+      {/* Mensagem de boas-vindas */}
+      <div>
+        <label className="text-sm text-muted-foreground flex items-center gap-1"><Type className="h-3.5 w-3.5" /> Mensagem de boas-vindas (opcional)</label>
+        <textarea value={config.mensagem_boas_vindas || ""} onChange={(e) => setConfig({ ...config, mensagem_boas_vindas: e.target.value })}
+          className={`${inputClass} min-h-[60px]`} maxLength={300} placeholder="Seja bem-vindo(a)! Agende sua sessão de forma rápida e prática." />
+      </div>
+
+      {/* Horário de funcionamento */}
+      <div>
+        <label className="text-sm text-muted-foreground flex items-center gap-1"><Type className="h-3.5 w-3.5" /> Horário de funcionamento (opcional)</label>
+        <input value={config.horario_funcionamento || ""} onChange={(e) => setConfig({ ...config, horario_funcionamento: e.target.value })}
+          className={inputClass} maxLength={150} placeholder="Seg a Sex: 7h às 20h · Sáb: 8h às 13h" />
       </div>
 
       {/* Link Instagram */}
