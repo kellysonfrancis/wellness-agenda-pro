@@ -60,7 +60,7 @@ export default function AppSidebar() {
   const linkClass = (isActive: boolean) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
       isActive
-        ? "bg-sidebar-accent text-sidebar-primary"
+        ? "bg-sidebar-accent text-sidebar-accent-foreground"
         : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
     }`;
 
