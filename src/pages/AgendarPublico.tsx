@@ -29,6 +29,8 @@ interface LandingConfig {
   cor_fundo: string;
   cor_texto: string;
   link_instagram: string | null;
+  mensagem_boas_vindas: string | null;
+  horario_funcionamento: string | null;
 }
 
 function phoneMask(value: string) {
@@ -183,6 +185,20 @@ export default function AgendarPublico() {
           </p>
         </div>
       </div>
+
+      {/* Welcome message & hours */}
+      {(config?.mensagem_boas_vindas || config?.horario_funcionamento) && (
+        <div className="max-w-lg mx-auto px-4 pt-4">
+          <div className="rounded-xl border border-border bg-card p-4 text-center space-y-1">
+            {config.mensagem_boas_vindas && (
+              <p className="text-sm" style={{ color: corTexto }}>{config.mensagem_boas_vindas}</p>
+            )}
+            {config.horario_funcionamento && (
+              <p className="text-xs text-muted-foreground">{config.horario_funcionamento}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Progress */}
       <div className="max-w-lg mx-auto px-4 py-4">

@@ -457,9 +457,11 @@ export type Database = {
           cor_primaria: string | null
           cor_texto: string | null
           created_at: string
+          horario_funcionamento: string | null
           id: string
           link_instagram: string | null
           logo_url: string | null
+          mensagem_boas_vindas: string | null
           nome_clinica: string
           subtitulo: string | null
           updated_at: string
@@ -470,9 +472,11 @@ export type Database = {
           cor_primaria?: string | null
           cor_texto?: string | null
           created_at?: string
+          horario_funcionamento?: string | null
           id?: string
           link_instagram?: string | null
           logo_url?: string | null
+          mensagem_boas_vindas?: string | null
           nome_clinica?: string
           subtitulo?: string | null
           updated_at?: string
@@ -483,9 +487,11 @@ export type Database = {
           cor_primaria?: string | null
           cor_texto?: string | null
           created_at?: string
+          horario_funcionamento?: string | null
           id?: string
           link_instagram?: string | null
           logo_url?: string | null
+          mensagem_boas_vindas?: string | null
           nome_clinica?: string
           subtitulo?: string | null
           updated_at?: string
