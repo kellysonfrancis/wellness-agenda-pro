@@ -1,6 +1,6 @@
 import { useState } from "react";
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { BarChart3, TrendingUp, TrendingDown, Users, PieChart, Receipt, Landmark, Wallet } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Users, PieChart, Receipt, Landmark, Wallet, Loader2 } from "lucide-react";
 import {
   BarChart, Bar, PieChart as RPie, Pie, Cell,
   FunnelChart, Funnel, LabelList, ComposedChart, Line,
@@ -14,13 +14,26 @@ export default function BI() {
   const [period, setPeriod] = useState<PeriodFilter>("all");
   const [category, setCategory] = useState<CategoryFilter>("all");
 
+  const { data, isLoading } = useBIData(period, category);
+
   const {
-    revenue, catRev, payStatus, funnel, ltv,
-    totalRevenue, avgTicket, activeClients,
-    totalExpenses, totalFixedExpenses, totalVariableExpenses,
-    profit, profitMargin, revenueVsExpenses, expenseByCategory,
-    cashFlowByAccount, accountBalances,
-  } = useBIData(period, category);
+    revenue = [], catRev = [], payStatus = [], funnel = [], ltv = [],
+    totalRevenue = 0, avgTicket = 0, activeClients = 0,
+    totalExpenses = 0, totalFixedExpenses = 0, totalVariableExpenses = 0,
+    profit = 0, profitMargin = 0, revenueVsExpenses = [], expenseByCategory = [],
+    cashFlowByAccount = [], accountBalances = [],
+  } = data ?? {};
+
+  if (isLoading) {
+    return (
+      <GlobalLayout>
+        <div className="flex items-center justify-center h-64 gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Carregando dados…</span>
+        </div>
+      </GlobalLayout>
+    );
+  }
 
   return (
     <GlobalLayout>

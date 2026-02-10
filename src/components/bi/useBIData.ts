@@ -1,11 +1,7 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import type { PeriodFilter, CategoryFilter } from "./BIFilters";
-import type { Payment, Appointment, Expense } from "@/types/clinic";
-import {
-  mockPayments, mockClients, mockAppointments,
-  mockEntitlements, mockServices, mockPlans, mockExpenses, getClientName,
-  mockBankAccounts, mockTransactions,
-} from "@/data/mockData";
 
 const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const catLabel: Record<string, string> = { pilates: "Pilates", fisioterapia: "Fisioterapia", estetica: "Estética" };
@@ -19,43 +15,71 @@ export const PIE_COLORS = [
   "hsl(0 72% 51%)",
 ];
 
-function periodCutoff(period: PeriodFilter): Date | null {
+function periodCutoff(period: PeriodFilter): string | null {
   if (period === "all") return null;
   const now = new Date();
-  if (period === "month") return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-  if (period === "quarter") return new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-  return new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+  let d: Date;
+  if (period === "month") d = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+  else if (period === "quarter") d = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+  else d = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+  return d.toISOString();
 }
 
-function getServiceCategory(serviceId: string) {
-  return mockServices.find((s) => s.id === serviceId)?.categoria;
+async function fetchBIRawData() {
+  const [apptRes, payRes, clientRes, expRes, svcRes, planRes, entRes, bankRes, txRes] = await Promise.all([
+    supabase.from("appointments").select("id, client_id, service_id, inicio_em, status"),
+    supabase.from("payments").select("id, client_id, appointment_id, valor_pago, valor_total, status, created_at, metodo"),
+    supabase.from("clients").select("id, nome, created_at"),
+    supabase.from("expenses").select("id, descricao, valor, tipo, categoria, created_at"),
+    supabase.from("services").select("id, nome, categoria, preco_base"),
+    supabase.from("product_plans").select("id, nome, categoria"),
+    supabase.from("client_entitlements").select("id, client_id, product_plan_id, status, created_at"),
+    supabase.from("bank_accounts").select("id, nome, tipo, ativo, saldo_atual"),
+    supabase.from("account_transactions").select("id, tipo, valor, conta_origem_id, conta_destino_id, created_at"),
+  ]);
+
+  return {
+    appointments: apptRes.data ?? [],
+    payments: payRes.data ?? [],
+    clients: clientRes.data ?? [],
+    expenses: expRes.data ?? [],
+    services: svcRes.data ?? [],
+    plans: planRes.data ?? [],
+    entitlements: entRes.data ?? [],
+    bankAccounts: bankRes.data ?? [],
+    transactions: txRes.data ?? [],
+  };
 }
 
 export function useBIData(period: PeriodFilter, category: CategoryFilter) {
-  return useMemo(() => {
+  const { data: raw, isLoading, error } = useQuery({
+    queryKey: ["bi-data"],
+    queryFn: fetchBIRawData,
+    staleTime: 60_000,
+  });
+
+  const computed = useMemo(() => {
+    if (!raw) return null;
+
     const cutoff = periodCutoff(period);
+    const { appointments, payments, clients, expenses, services, plans, entitlements, bankAccounts, transactions } = raw;
 
-    // Filter appointments by date (inicioEm) and category
-    let filteredAppts = mockAppointments as Appointment[];
-    if (cutoff) filteredAppts = filteredAppts.filter((a) => new Date(a.inicioEm) >= cutoff);
-    if (category !== "all") filteredAppts = filteredAppts.filter((a) => getServiceCategory(a.serviceId) === category);
+    const svcMap = new Map(services.map((s) => [s.id, s]));
+    const getServiceCategory = (serviceId: string) => svcMap.get(serviceId)?.categoria;
+    const clientMap = new Map(clients.map((c) => [c.id, c.nome]));
 
-    // Filter payments by date
-    let filteredPayments = mockPayments as Payment[];
-    if (cutoff) filteredPayments = filteredPayments.filter((p) => new Date(p.criadoEm) >= cutoff);
+    // Filter appointments
+    let filteredAppts = appointments;
+    if (cutoff) filteredAppts = filteredAppts.filter((a) => a.inicio_em >= cutoff);
+    if (category !== "all") filteredAppts = filteredAppts.filter((a) => getServiceCategory(a.service_id) === category);
 
-    // Further filter payments by category
+    // Filter payments
+    let filteredPayments = payments;
+    if (cutoff) filteredPayments = filteredPayments.filter((p) => p.created_at >= cutoff);
     if (category !== "all") {
       const apptIds = new Set(filteredAppts.map((a) => a.id));
       filteredPayments = filteredPayments.filter((p) => {
-        if (p.appointmentId) return apptIds.has(p.appointmentId);
-        if (p.entitlementId) {
-          const ent = mockEntitlements.find((e) => e.id === p.entitlementId);
-          if (ent) {
-            const plan = mockPlans.find((pl) => pl.id === ent.productPlanId);
-            return plan?.categoria === category;
-          }
-        }
+        if (p.appointment_id) return apptIds.has(p.appointment_id);
         return false;
       });
     }
@@ -64,18 +88,18 @@ export function useBIData(period: PeriodFilter, category: CategoryFilter) {
     const revenueMap: Record<string, number> = {};
     months.forEach((m) => (revenueMap[m] = 0));
     filteredPayments.forEach((p) => {
-      const m = months[new Date(p.criadoEm).getMonth()];
-      revenueMap[m] = (revenueMap[m] || 0) + p.valorPago;
+      const m = months[new Date(p.created_at).getMonth()];
+      revenueMap[m] = (revenueMap[m] || 0) + Number(p.valor_pago);
     });
     const revenue = months.map((m) => ({ mes: m, receita: revenueMap[m] }));
 
     // Category revenue
     const catRevMap: Record<string, number> = {};
     filteredAppts.forEach((a) => {
-      const svc = mockServices.find((s) => s.id === a.serviceId);
+      const svc = svcMap.get(a.service_id);
       if (!svc) return;
-      const payment = filteredPayments.find((p) => p.appointmentId === a.id);
-      catRevMap[svc.categoria] = (catRevMap[svc.categoria] || 0) + (payment?.valorPago ?? svc.precoBase);
+      const payment = filteredPayments.find((p) => p.appointment_id === a.id);
+      catRevMap[svc.categoria] = (catRevMap[svc.categoria] || 0) + Number(payment?.valor_pago ?? svc.preco_base);
     });
     const catRev = Object.entries(catRevMap).map(([name, value]) => ({
       name: catLabel[name] || name, value,
@@ -91,15 +115,11 @@ export function useBIData(period: PeriodFilter, category: CategoryFilter) {
     }));
 
     // Funnel
-    const filteredClients = cutoff
-      ? mockClients.filter((c) => new Date(c.criadoEm) >= cutoff)
-      : mockClients;
+    const filteredClients = cutoff ? clients.filter((c) => c.created_at >= cutoff) : clients;
     const leads = filteredClients.length;
-    const withAppt = new Set(filteredAppts.map((a) => a.clientId)).size;
-    const filteredEnts = cutoff
-      ? mockEntitlements.filter((e) => new Date(e.criadoEm) >= cutoff)
-      : mockEntitlements;
-    const withPack = new Set(filteredEnts.map((e) => e.clientId)).size;
+    const withAppt = new Set(filteredAppts.map((a) => a.client_id)).size;
+    const filteredEnts = cutoff ? entitlements.filter((e) => e.created_at >= cutoff) : entitlements;
+    const withPack = new Set(filteredEnts.map((e) => e.client_id)).size;
     const recurring = filteredEnts.filter((e) => e.status === "ativo").length;
     const funnel = [
       { name: "Cadastros", value: leads, fill: "hsl(172 66% 30%)" },
@@ -111,25 +131,26 @@ export function useBIData(period: PeriodFilter, category: CategoryFilter) {
     // LTV
     const clientTotals: Record<string, number> = {};
     filteredPayments.forEach((p) => {
-      clientTotals[p.clientId] = (clientTotals[p.clientId] || 0) + p.valorPago;
+      clientTotals[p.client_id] = (clientTotals[p.client_id] || 0) + Number(p.valor_pago);
     });
     const ltv = Object.entries(clientTotals)
-      .map(([id, total]) => ({ cliente: getClientName(id), ltv: total }))
-      .sort((a, b) => b.ltv - a.ltv);
+      .map(([id, total]) => ({ cliente: clientMap.get(id) || id.slice(0, 8), ltv: total }))
+      .sort((a, b) => b.ltv - a.ltv)
+      .slice(0, 10);
 
     // KPIs
-    const totalRevenue = filteredPayments.reduce((s, p) => s + p.valorPago, 0);
-    const paidCount = filteredPayments.filter((p) => p.valorPago > 0).length;
+    const totalRevenue = filteredPayments.reduce((s, p) => s + Number(p.valor_pago), 0);
+    const paidCount = filteredPayments.filter((p) => Number(p.valor_pago) > 0).length;
     const avgTicket = totalRevenue / (paidCount || 1);
-    const activeClients = new Set(filteredAppts.map((a) => a.clientId)).size;
+    const activeClients = new Set(filteredAppts.map((a) => a.client_id)).size;
 
     // Expenses
-    let filteredExpenses = mockExpenses as Expense[];
-    if (cutoff) filteredExpenses = filteredExpenses.filter((e) => new Date(e.criadoEm) >= cutoff);
+    let filteredExpenses = expenses;
+    if (cutoff) filteredExpenses = filteredExpenses.filter((e) => e.created_at >= cutoff);
 
-    const totalExpenses = filteredExpenses.reduce((s, e) => s + e.valor, 0);
-    const totalFixedExpenses = filteredExpenses.filter((e) => e.tipo === "fixa").reduce((s, e) => s + e.valor, 0);
-    const totalVariableExpenses = filteredExpenses.filter((e) => e.tipo === "variavel").reduce((s, e) => s + e.valor, 0);
+    const totalExpenses = filteredExpenses.reduce((s, e) => s + Number(e.valor), 0);
+    const totalFixedExpenses = filteredExpenses.filter((e) => e.tipo === "fixa").reduce((s, e) => s + Number(e.valor), 0);
+    const totalVariableExpenses = filteredExpenses.filter((e) => e.tipo === "variavel").reduce((s, e) => s + Number(e.valor), 0);
     const profit = totalRevenue - totalExpenses;
     const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
 
@@ -137,14 +158,11 @@ export function useBIData(period: PeriodFilter, category: CategoryFilter) {
     const expenseMap: Record<string, number> = {};
     months.forEach((m) => (expenseMap[m] = 0));
     filteredExpenses.forEach((e) => {
-      const m = months[new Date(e.criadoEm).getMonth()];
-      expenseMap[m] = (expenseMap[m] || 0) + e.valor;
+      const m = months[new Date(e.created_at).getMonth()];
+      expenseMap[m] = (expenseMap[m] || 0) + Number(e.valor);
     });
     const revenueVsExpenses = months.map((m) => ({
-      mes: m,
-      receita: revenueMap[m],
-      despesas: expenseMap[m],
-      lucro: revenueMap[m] - expenseMap[m],
+      mes: m, receita: revenueMap[m], despesas: expenseMap[m], lucro: revenueMap[m] - expenseMap[m],
     }));
 
     // Expense by category
@@ -155,39 +173,36 @@ export function useBIData(period: PeriodFilter, category: CategoryFilter) {
     };
     const expByCat: Record<string, number> = {};
     filteredExpenses.forEach((e) => {
-      expByCat[e.categoria] = (expByCat[e.categoria] || 0) + e.valor;
+      expByCat[e.categoria] = (expByCat[e.categoria] || 0) + Number(e.valor);
     });
     const expenseByCategory = Object.entries(expByCat).map(([name, value]) => ({
       name: expCatLabel[name] || name, value,
     }));
 
     // Cash flow by account
-    const filteredTx = cutoff
-      ? mockTransactions.filter((t) => new Date(t.criadoEm) >= cutoff)
-      : mockTransactions;
-
+    const filteredTx = cutoff ? transactions.filter((t) => t.created_at >= cutoff) : transactions;
     const accountFlowMap: Record<string, { name: string; entradas: number; saidas: number }> = {};
-    mockBankAccounts.filter((a) => a.ativo).forEach((a) => {
+    bankAccounts.filter((a) => a.ativo).forEach((a) => {
       accountFlowMap[a.id] = { name: a.nome, entradas: 0, saidas: 0 };
     });
     filteredTx.forEach((t) => {
-      if (t.tipo === "entrada" && t.contaDestinoId && accountFlowMap[t.contaDestinoId]) {
-        accountFlowMap[t.contaDestinoId].entradas += t.valor;
+      if (t.tipo === "entrada" && t.conta_destino_id && accountFlowMap[t.conta_destino_id]) {
+        accountFlowMap[t.conta_destino_id].entradas += Number(t.valor);
       }
-      if (t.tipo === "saida" && t.contaOrigemId && accountFlowMap[t.contaOrigemId]) {
-        accountFlowMap[t.contaOrigemId].saidas += t.valor;
+      if (t.tipo === "saida" && t.conta_origem_id && accountFlowMap[t.conta_origem_id]) {
+        accountFlowMap[t.conta_origem_id].saidas += Number(t.valor);
       }
       if (t.tipo === "transferencia") {
-        if (t.contaOrigemId && accountFlowMap[t.contaOrigemId]) accountFlowMap[t.contaOrigemId].saidas += t.valor;
-        if (t.contaDestinoId && accountFlowMap[t.contaDestinoId]) accountFlowMap[t.contaDestinoId].entradas += t.valor;
+        if (t.conta_origem_id && accountFlowMap[t.conta_origem_id]) accountFlowMap[t.conta_origem_id].saidas += Number(t.valor);
+        if (t.conta_destino_id && accountFlowMap[t.conta_destino_id]) accountFlowMap[t.conta_destino_id].entradas += Number(t.valor);
       }
     });
     const cashFlowByAccount = Object.values(accountFlowMap).map((a) => ({
       ...a, saldo: a.entradas - a.saidas,
     }));
 
-    const accountBalances = mockBankAccounts.filter((a) => a.ativo).map((a) => ({
-      name: a.nome, saldo: a.saldoAtual,
+    const accountBalances = bankAccounts.filter((a) => a.ativo).map((a) => ({
+      name: a.nome, saldo: Number(a.saldo_atual),
     }));
 
     return {
@@ -195,5 +210,7 @@ export function useBIData(period: PeriodFilter, category: CategoryFilter) {
       totalExpenses, totalFixedExpenses, totalVariableExpenses, profit, profitMargin,
       revenueVsExpenses, expenseByCategory, cashFlowByAccount, accountBalances,
     };
-  }, [period, category]);
+  }, [raw, period, category]);
+
+  return { data: computed, isLoading, error };
 }
