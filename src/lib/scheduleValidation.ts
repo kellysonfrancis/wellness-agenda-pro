@@ -1,19 +1,27 @@
 import { supabase } from "@/integrations/supabase/client";
 
+interface Pausa {
+  inicio: number;
+  fim: number;
+}
+
 export interface CategorySchedule {
   categoria: string;
   dias_semana: number[];
   hora_inicio: number;
   hora_fim: number;
+  pausas: Pausa[];
 }
 
 let cachedSchedules: CategorySchedule[] | null = null;
 
 export async function fetchCategorySchedules(): Promise<CategorySchedule[]> {
   if (cachedSchedules) return cachedSchedules;
-  const { data } = await supabase.from("category_schedules").select("categoria, dias_semana, hora_inicio, hora_fim");
-  cachedSchedules = (data as CategorySchedule[]) ?? [];
-  // Cache for 60s
+  const { data } = await supabase.from("category_schedules").select("categoria, dias_semana, hora_inicio, hora_fim, pausas");
+  cachedSchedules = (data ?? []).map((row: any) => ({
+    ...row,
+    pausas: Array.isArray(row.pausas) ? row.pausas : [],
+  })) as CategorySchedule[];
   setTimeout(() => { cachedSchedules = null; }, 60_000);
   return cachedSchedules;
 }
@@ -26,9 +34,9 @@ export function validateAgainstSchedule(
   schedule: CategorySchedule | undefined,
   date: Date,
 ): string | null {
-  if (!schedule) return null; // No schedule configured = allow all
+  if (!schedule) return null;
 
-  const dayOfWeek = date.getDay(); // 0=Sun, 1=Mon...
+  const dayOfWeek = date.getDay();
   if (!schedule.dias_semana.includes(dayOfWeek)) {
     const dayNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
     return `${dayNames[dayOfWeek]} não é um dia permitido para esta categoria`;
@@ -37,6 +45,13 @@ export function validateAgainstSchedule(
   const hour = date.getHours() + date.getMinutes() / 60;
   if (hour < schedule.hora_inicio || hour >= schedule.hora_fim) {
     return `Horário fora da janela permitida (${schedule.hora_inicio}h - ${schedule.hora_fim}h)`;
+  }
+
+  // Check breaks
+  for (const pausa of schedule.pausas || []) {
+    if (hour >= pausa.inicio && hour < pausa.fim) {
+      return `Horário de pausa (${pausa.inicio}h - ${pausa.fim}h)`;
+    }
   }
 
   return null;
