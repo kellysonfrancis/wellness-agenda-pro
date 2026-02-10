@@ -7,6 +7,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+interface Pausa { inicio: number; fim: number; }
+
+function isDateHoliday(date: string, holidays: { data: string; recorrente: boolean }[]): boolean {
+  const monthDay = date.slice(5); // MM-DD
+  return holidays.some((h) => h.recorrente ? h.data.slice(5) === monthDay : h.data === date);
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -35,6 +42,18 @@ serve(async (req: Request) => {
       });
     }
 
+    // GET: holidays list (for frontend date filtering)
+    if (req.method === "GET" && action === "holidays") {
+      const { data: holidays } = await client
+        .from("holidays")
+        .select("data, descricao, recorrente")
+        .order("data");
+
+      return new Response(JSON.stringify({ holidays: holidays ?? [] }), {
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     // GET: Available slots for a given date, service, and professional
     if (req.method === "GET" && action === "slots") {
       const date = url.searchParams.get("date");
@@ -47,14 +66,42 @@ serve(async (req: Request) => {
         });
       }
 
-      // Get service duration
-      const { data: svc } = await client.from("services").select("duracao_min, max_alunos").eq("id", serviceId).single();
+      // Check if date is a holiday
+      const { data: holidays } = await client.from("holidays").select("data, recorrente");
+      if (isDateHoliday(date, holidays ?? [])) {
+        return new Response(JSON.stringify({ slots: [], duracao_min: 0, blocked: true, reason: "Feriado" }), {
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      // Get service duration and category
+      const { data: svc } = await client.from("services").select("duracao_min, max_alunos, categoria").eq("id", serviceId).single();
       if (!svc) {
         return new Response(JSON.stringify({ error: "Serviço não encontrado" }), {
           status: 404, headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
 
+      // Get category schedule (with pausas)
+      const { data: schedules } = await client
+        .from("category_schedules")
+        .select("dias_semana, hora_inicio, hora_fim, pausas")
+        .eq("categoria", svc.categoria);
+
+      const schedule = schedules && schedules.length > 0 ? schedules[0] : null;
+      const pausas: Pausa[] = schedule?.pausas && Array.isArray(schedule.pausas) ? schedule.pausas as Pausa[] : [];
+
+      // Check day of week
+      const dateObj = new Date(date + "T12:00:00");
+      const dayOfWeek = dateObj.getDay();
+      if (schedule && !schedule.dias_semana.includes(dayOfWeek)) {
+        return new Response(JSON.stringify({ slots: [], duracao_min: svc.duracao_min, blocked: true, reason: "Dia não permitido para esta categoria" }), {
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      const schedStart = schedule?.hora_inicio ?? 8;
+      const schedEnd = schedule?.hora_fim ?? 20;
       const maxAlunos = svc.max_alunos ?? 1;
 
       // Get existing appointments for that professional on that date
@@ -78,18 +125,30 @@ serve(async (req: Request) => {
         }
       });
 
-      // Generate available slots (8:00 to 20:00)
+      // Generate available slots within schedule hours, excluding breaks
       const slots: string[] = [];
       const duration = svc.duracao_min;
 
-      for (let h = 8; h < 20; h++) {
+      for (let h = schedStart; h < schedEnd; h++) {
+        // Skip hours during breaks
+        const inBreak = pausas.some((p) => h >= p.inicio && h < p.fim);
+        if (inBreak) continue;
+
         for (let m = 0; m < 60; m += 30) {
+          const slotHour = h + m / 60;
+          if (slotHour >= schedEnd) break;
+
+          // Also check if the slot end falls in a break
+          const slotEndHour = slotHour + duration / 60;
+          const endInBreak = pausas.some((p) => slotEndHour > p.inicio && slotHour < p.fim);
+          if (endInBreak) continue;
+
           const slotStart = `${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
           const slotEnd = new Date(new Date(slotStart).getTime() + duration * 60000).toISOString();
 
           // Check if professional has any conflicting appointment (different service)
           const hasConflict = (existing ?? []).some((a: any) => {
-            if (a.service_id === serviceId) return false; // same service handled by capacity
+            if (a.service_id === serviceId) return false;
             const aStart = new Date(a.inicio_em).getTime();
             const aEnd = new Date(a.fim_em).getTime();
             const sStart = new Date(slotStart).getTime();
@@ -146,8 +205,17 @@ serve(async (req: Request) => {
         });
       }
 
-      // Validate against category schedule
-      const { data: schedules } = await client.from("category_schedules").select("dias_semana, hora_inicio, hora_fim").eq("categoria", svc.categoria);
+      // Check holiday
+      const bookingDate = inicio_em.slice(0, 10);
+      const { data: holidays } = await client.from("holidays").select("data, recorrente");
+      if (isDateHoliday(bookingDate, holidays ?? [])) {
+        return new Response(JSON.stringify({ error: "Não é possível agendar em feriados" }), {
+          status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      // Validate against category schedule (days, hours, breaks)
+      const { data: schedules } = await client.from("category_schedules").select("dias_semana, hora_inicio, hora_fim, pausas").eq("categoria", svc.categoria);
       if (schedules && schedules.length > 0) {
         const schedule = schedules[0];
         const startDate = new Date(inicio_em);
@@ -162,6 +230,15 @@ serve(async (req: Request) => {
           return new Response(JSON.stringify({ error: `Horário fora da janela permitida (${schedule.hora_inicio}h - ${schedule.hora_fim}h)` }), {
             status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
           });
+        }
+        // Check breaks
+        const pausas: Pausa[] = schedule.pausas && Array.isArray(schedule.pausas) ? schedule.pausas as Pausa[] : [];
+        for (const pausa of pausas) {
+          if (hour >= pausa.inicio && hour < pausa.fim) {
+            return new Response(JSON.stringify({ error: `Horário de pausa (${pausa.inicio}h - ${pausa.fim}h)` }), {
+              status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
+            });
+          }
         }
       }
 
