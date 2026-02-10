@@ -2,7 +2,12 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Clock, Save } from "lucide-react";
+import { Clock, Save, Plus, Trash2 } from "lucide-react";
+
+interface Pausa {
+  inicio: number;
+  fim: number;
+}
 
 interface CategorySchedule {
   id: string;
@@ -10,6 +15,7 @@ interface CategorySchedule {
   dias_semana: number[];
   hora_inicio: number;
   hora_fim: number;
+  pausas: Pausa[];
 }
 
 const DIAS = [
@@ -38,10 +44,13 @@ export default function CategorySchedulesEditor() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("category_schedules")
-        .select("id, categoria, dias_semana, hora_inicio, hora_fim")
+        .select("id, categoria, dias_semana, hora_inicio, hora_fim, pausas")
         .order("categoria");
       if (error) throw error;
-      return (data || []) as CategorySchedule[];
+      return (data || []).map((row: any) => ({
+        ...row,
+        pausas: Array.isArray(row.pausas) ? row.pausas : [],
+      })) as CategorySchedule[];
     },
   });
 
@@ -50,6 +59,7 @@ export default function CategorySchedulesEditor() {
   const getVal = (sched: CategorySchedule) => ({
     ...sched,
     ...edits[sched.id],
+    pausas: edits[sched.id]?.pausas ?? sched.pausas ?? [],
   });
 
   const setEdit = (id: string, patch: Partial<CategorySchedule>) => {
@@ -61,6 +71,19 @@ export default function CategorySchedulesEditor() {
     setEdit(id, { dias_semana: has ? current.filter((d) => d !== day) : [...current, day].sort() });
   };
 
+  const addPausa = (id: string, currentPausas: Pausa[]) => {
+    setEdit(id, { pausas: [...currentPausas, { inicio: 12, fim: 13 }] });
+  };
+
+  const updatePausa = (id: string, currentPausas: Pausa[], idx: number, field: "inicio" | "fim", value: number) => {
+    const updated = currentPausas.map((p, i) => i === idx ? { ...p, [field]: value } : p);
+    setEdit(id, { pausas: updated });
+  };
+
+  const removePausa = (id: string, currentPausas: Pausa[], idx: number) => {
+    setEdit(id, { pausas: currentPausas.filter((_, i) => i !== idx) });
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (sched: CategorySchedule) => {
       const vals = getVal(sched);
@@ -70,6 +93,7 @@ export default function CategorySchedulesEditor() {
           dias_semana: vals.dias_semana,
           hora_inicio: vals.hora_inicio,
           hora_fim: vals.hora_fim,
+          pausas: vals.pausas as any,
         })
         .eq("id", sched.id);
       if (error) throw error;
@@ -87,6 +111,16 @@ export default function CategorySchedulesEditor() {
       toast.error("Hora de início deve ser menor que hora de fim");
       return;
     }
+    for (const p of vals.pausas) {
+      if (p.inicio >= p.fim) {
+        toast.error("Início da pausa deve ser menor que o fim");
+        return;
+      }
+      if (p.inicio < vals.hora_inicio || p.fim > vals.hora_fim) {
+        toast.error("Pausa deve estar dentro do horário de atendimento");
+        return;
+      }
+    }
     saveMutation.mutate(sched);
   };
 
@@ -101,7 +135,7 @@ export default function CategorySchedulesEditor() {
         Horários de Atendimento por Categoria
       </h2>
       <p className="text-xs text-muted-foreground">
-        Defina os dias e horários permitidos para cada categoria. Na agenda, os horários fora do intervalo ficam bloqueados ao filtrar por categoria.
+        Defina os dias, horários e pausas para cada categoria. Na agenda, os horários fora do intervalo ficam bloqueados ao filtrar por categoria.
       </p>
 
       {schedules.map((sched) => {
@@ -156,6 +190,60 @@ export default function CategorySchedulesEditor() {
                   <option value={22}>22:00</option>
                 </select>
               </div>
+            </div>
+
+            {/* Pausas / Breaks */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-muted-foreground">Pausas / Intervalos</label>
+                <button
+                  type="button"
+                  onClick={() => addPausa(sched.id, vals.pausas)}
+                  className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  <Plus className="h-3 w-3" /> Adicionar pausa
+                </button>
+              </div>
+              {vals.pausas.length === 0 && (
+                <p className="text-xs text-muted-foreground/70 italic">Nenhuma pausa configurada</p>
+              )}
+              {vals.pausas.map((pausa, idx) => (
+                <div key={idx} className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground">De</label>
+                    <select
+                      value={pausa.inicio}
+                      onChange={(e) => updatePausa(sched.id, vals.pausas, idx, "inicio", Number(e.target.value))}
+                      className={inputClass}
+                    >
+                      {HORAS.map((h) => (
+                        <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground">Até</label>
+                    <select
+                      value={pausa.fim}
+                      onChange={(e) => updatePausa(sched.id, vals.pausas, idx, "fim", Number(e.target.value))}
+                      className={inputClass}
+                    >
+                      {HORAS.map((h) => (
+                        <option key={h} value={h}>{String(h).padStart(2, "0")}:00</option>
+                      ))}
+                      <option value={22}>22:00</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePausa(sched.id, vals.pausas, idx)}
+                    className="p-2 text-destructive hover:text-destructive/80 mb-0.5"
+                    title="Remover pausa"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
             </div>
 
             <button
