@@ -466,6 +466,7 @@ export type Database = {
           subtitulo: string | null
           telefone_whatsapp: string | null
           updated_at: string
+          whatsapp_mensagem: string | null
         }
         Insert: {
           banner_url?: string | null
@@ -482,6 +483,7 @@ export type Database = {
           subtitulo?: string | null
           telefone_whatsapp?: string | null
           updated_at?: string
+          whatsapp_mensagem?: string | null
         }
         Update: {
           banner_url?: string | null
@@ -498,6 +500,7 @@ export type Database = {
           subtitulo?: string | null
           telefone_whatsapp?: string | null
           updated_at?: string
+          whatsapp_mensagem?: string | null
         }
         Relationships: []
       }
