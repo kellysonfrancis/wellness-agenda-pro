@@ -7,6 +7,7 @@ import {
   Moon, Sun, MessageSquare, ChevronDown, FolderOpen, FileText
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useSidebarBadges } from "@/hooks/useSidebarBadges";
 
 interface NavItem {
   label: string;
@@ -104,6 +105,7 @@ function clearInlineVars(el: HTMLElement) {
 export default function AppSidebar() {
   const { profile, roles, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const badges = useSidebarBadges();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
 
   // Read persisted sidebar settings
@@ -151,6 +153,16 @@ export default function AppSidebar() {
 
   const hasRole = (entry: NavEntry) => entry.roles.some((r) => roles.includes(r));
 
+  const Badge = ({ count }: { count?: number }) =>
+    count ? (
+      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+        {count > 99 ? "99+" : count}
+      </span>
+    ) : null;
+
+  const groupBadgeCount = (group: NavGroup): number =>
+    group.children.reduce((sum, c) => sum + (badges[c.path] || 0), 0);
+
   const linkClass = (isActive: boolean) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
       isActive
@@ -171,6 +183,8 @@ export default function AppSidebar() {
       if (isChildActive) setExpanded(true);
     }, [isChildActive]);
 
+    const groupCount = groupBadgeCount(group);
+
     return (
       <div>
         <button
@@ -183,6 +197,7 @@ export default function AppSidebar() {
         >
           <group.icon className="h-4 w-4 shrink-0" />
           <span className="flex-1 text-left">{group.label}</span>
+          {!expanded && groupCount > 0 && <Badge count={groupCount} />}
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
         </button>
         {expanded && (
@@ -196,6 +211,7 @@ export default function AppSidebar() {
               >
                 <item.icon className="h-3.5 w-3.5 shrink-0" />
                 <span className="text-[13px]">{item.label}</span>
+                <Badge count={badges[item.path]} />
               </RouterNavLink>
             ))}
           </div>
@@ -233,6 +249,7 @@ export default function AppSidebar() {
             >
               <entry.icon className="h-4 w-4 shrink-0" />
               <span>{entry.label}</span>
+              <Badge count={badges[entry.path]} />
             </RouterNavLink>
           )
         )}
