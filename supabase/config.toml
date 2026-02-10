@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.check-whatsapp-reminders]
 verify_jwt = false
+
+[functions.check-whatsapp-confirmations]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
