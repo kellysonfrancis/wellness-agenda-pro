@@ -3,7 +3,7 @@ import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Calendar, Users, DollarSign, Sparkles,
   Package, Settings, CalendarPlus, CalendarCheck, ShoppingBag,
-  LogOut, Menu, X, BarChart3, Receipt, UserCog, Tags, Stethoscope, HandCoins
+  LogOut, Menu, X, BarChart3, Receipt, UserCog, Tags, Stethoscope, HandCoins, ShoppingCart
 } from "lucide-react";
 import { useState } from "react";
 
@@ -17,6 +17,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: ["admin", "recepcao", "profissional", "cliente"] },
   { label: "Agenda", path: "/agenda", icon: Calendar, roles: ["admin", "recepcao", "profissional"] },
+  { label: "Venda Rápida", path: "/venda-rapida", icon: ShoppingCart, roles: ["admin", "recepcao", "profissional"] },
   { label: "Clientes", path: "/clientes", icon: Users, roles: ["admin", "recepcao"] },
   { label: "Financeiro", path: "/financeiro", icon: DollarSign, roles: ["admin", "recepcao"] },
   { label: "Despesas", path: "/despesas", icon: Receipt, roles: ["admin"] },

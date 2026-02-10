@@ -22,6 +22,7 @@ import ClientBooking from "./pages/ClientBooking";
 import ClientAppointments from "./pages/ClientAppointments";
 import ClientPackages from "./pages/ClientPackages";
 import Comissoes from "./pages/Comissoes";
+import VendaRapida from "./pages/VendaRapida";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/agenda" element={<ProtectedRoute roles={["admin", "recepcao", "profissional"]}><Agenda /></ProtectedRoute>} />
+            <Route path="/venda-rapida" element={<ProtectedRoute roles={["admin", "recepcao", "profissional"]}><VendaRapida /></ProtectedRoute>} />
             <Route path="/clientes" element={<ProtectedRoute roles={["admin", "recepcao"]}><Clientes /></ProtectedRoute>} />
             <Route path="/financeiro" element={<ProtectedRoute roles={["admin", "recepcao"]}><Financeiro /></ProtectedRoute>} />
             <Route path="/servicos" element={<ProtectedRoute roles={["admin"]}><Servicos /></ProtectedRoute>} />
