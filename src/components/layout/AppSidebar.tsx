@@ -1,10 +1,10 @@
-import { NavLink as RouterNavLink } from "react-router-dom";
+import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Calendar, Users, DollarSign, Sparkles,
   Package, Settings, CalendarPlus, CalendarCheck, ShoppingBag,
   LogOut, Menu, X, BarChart3, Receipt, UserCog, Tags, Stethoscope, HandCoins, ShoppingCart, AlertTriangle, Activity, UserX, TrendingUp, ClipboardList, ListOrdered,
-  Moon, Sun, MessageSquare
+  Moon, Sun, MessageSquare, ChevronDown, FolderOpen, FileText
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -15,29 +15,62 @@ interface NavItem {
   roles: AppRole[];
 }
 
-const navItems: NavItem[] = [
+interface NavGroup {
+  label: string;
+  icon: React.ElementType;
+  roles: AppRole[];
+  children: NavItem[];
+}
+
+type NavEntry = NavItem | NavGroup;
+
+function isGroup(entry: NavEntry): entry is NavGroup {
+  return "children" in entry;
+}
+
+const navEntries: NavEntry[] = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: ["admin", "recepcao", "profissional", "cliente"] },
   { label: "Agenda", path: "/agenda", icon: Calendar, roles: ["admin", "recepcao", "profissional"] },
   { label: "Prontuário", path: "/prontuario", icon: ClipboardList, roles: ["admin", "profissional"] },
   { label: "Lista de Espera", path: "/lista-espera", icon: ListOrdered, roles: ["admin", "recepcao"] },
   { label: "Venda Rápida", path: "/venda-rapida", icon: ShoppingCart, roles: ["admin", "recepcao", "profissional"] },
-  { label: "Clientes", path: "/clientes", icon: Users, roles: ["admin", "recepcao"] },
-  { label: "Financeiro", path: "/financeiro", icon: DollarSign, roles: ["admin", "recepcao"] },
-  { label: "Despesas", path: "/despesas", icon: Receipt, roles: ["admin"] },
-  { label: "Serviços", path: "/servicos", icon: Sparkles, roles: ["admin"] },
-  { label: "Categorias", path: "/categorias", icon: Tags, roles: ["admin"] },
-  { label: "Profissionais", path: "/profissionais", icon: Stethoscope, roles: ["admin"] },
-  { label: "Pacotes", path: "/pacotes", icon: Package, roles: ["admin"] },
-  { label: "BI / Análises", path: "/bi", icon: BarChart3, roles: ["admin"] },
-  { label: "Comissões", path: "/comissoes", icon: HandCoins, roles: ["admin"] },
-  { label: "Inadimplência", path: "/inadimplencia", icon: AlertTriangle, roles: ["admin"] },
-  { label: "Taxa de Ocupação", path: "/taxa-ocupacao", icon: Activity, roles: ["admin"] },
-  { label: "Churn", path: "/churn", icon: UserX, roles: ["admin"] },
-  { label: "Projeção Receita", path: "/projecao-receita", icon: TrendingUp, roles: ["admin"] },
-  { label: "Produtividade", path: "/produtividade", icon: BarChart3, roles: ["admin"] },
-  { label: "Usuários", path: "/usuarios", icon: UserCog, roles: ["admin"] },
-  { label: "WhatsApp Log", path: "/whatsapp-historico", icon: MessageSquare, roles: ["admin"] },
-  { label: "Configurações", path: "/configuracoes", icon: Settings, roles: ["admin"] },
+  {
+    label: "Cadastro", icon: FolderOpen, roles: ["admin", "recepcao"],
+    children: [
+      { label: "Clientes", path: "/clientes", icon: Users, roles: ["admin", "recepcao"] },
+      { label: "Profissionais", path: "/profissionais", icon: Stethoscope, roles: ["admin"] },
+      { label: "Usuários", path: "/usuarios", icon: UserCog, roles: ["admin"] },
+      { label: "Serviços", path: "/servicos", icon: Sparkles, roles: ["admin"] },
+      { label: "Categorias", path: "/categorias", icon: Tags, roles: ["admin"] },
+      { label: "Pacotes", path: "/pacotes", icon: Package, roles: ["admin"] },
+      { label: "Comissões", path: "/comissoes", icon: HandCoins, roles: ["admin"] },
+    ],
+  },
+  {
+    label: "Relatórios", icon: FileText, roles: ["admin"],
+    children: [
+      { label: "BI / Análises", path: "/bi", icon: BarChart3, roles: ["admin"] },
+      { label: "Taxa de Ocupação", path: "/taxa-ocupacao", icon: Activity, roles: ["admin"] },
+      { label: "Churn", path: "/churn", icon: UserX, roles: ["admin"] },
+      { label: "Produtividade", path: "/produtividade", icon: BarChart3, roles: ["admin"] },
+    ],
+  },
+  {
+    label: "Financeiro", icon: DollarSign, roles: ["admin", "recepcao"],
+    children: [
+      { label: "Financeiro", path: "/financeiro", icon: DollarSign, roles: ["admin", "recepcao"] },
+      { label: "Despesas", path: "/despesas", icon: Receipt, roles: ["admin"] },
+      { label: "Inadimplência", path: "/inadimplencia", icon: AlertTriangle, roles: ["admin"] },
+      { label: "Projeção Receita", path: "/projecao-receita", icon: TrendingUp, roles: ["admin"] },
+    ],
+  },
+  {
+    label: "Configurações", icon: Settings, roles: ["admin"],
+    children: [
+      { label: "Configurações", path: "/configuracoes", icon: Settings, roles: ["admin"] },
+      { label: "WhatsApp Log", path: "/whatsapp-historico", icon: MessageSquare, roles: ["admin"] },
+    ],
+  },
   // cliente
   { label: "Agendar", path: "/agendar", icon: CalendarPlus, roles: ["cliente"] },
   { label: "Meus Agendamentos", path: "/meus-agendamentos", icon: CalendarCheck, roles: ["cliente"] },
@@ -116,7 +149,7 @@ export default function AppSidebar() {
 
   if (!profile) return null;
 
-  const filtered = navItems.filter((i) => i.roles.some((r) => roles.includes(r)));
+  const hasRole = (entry: NavEntry) => entry.roles.some((r) => roles.includes(r));
 
   const linkClass = (isActive: boolean) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -126,6 +159,50 @@ export default function AppSidebar() {
     }`;
 
   const blurClass = blurLevel === "leve" ? "backdrop-blur-md" : blurLevel === "medio" ? "backdrop-blur-xl" : "backdrop-blur-2xl";
+
+  const SidebarGroup = ({ group }: { group: NavGroup }) => {
+    const location = useLocation();
+    const filteredChildren = group.children.filter(hasRole);
+    if (filteredChildren.length === 0) return null;
+    const isChildActive = filteredChildren.some((c) => location.pathname === c.path);
+    const [expanded, setExpanded] = useState(isChildActive);
+
+    useEffect(() => {
+      if (isChildActive) setExpanded(true);
+    }, [isChildActive]);
+
+    return (
+      <div>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+            isChildActive
+              ? "text-sidebar-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground"
+          }`}
+        >
+          <group.icon className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left">{group.label}</span>
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
+        </button>
+        {expanded && (
+          <div className="ml-4 mt-0.5 space-y-0.5 border-l border-sidebar-border/30 pl-2">
+            {filteredChildren.map((item) => (
+              <RouterNavLink
+                key={item.path}
+                to={item.path}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) => linkClass(isActive)}
+              >
+                <item.icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="text-[13px]">{item.label}</span>
+              </RouterNavLink>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const sidebar = (
     <div
@@ -144,17 +221,21 @@ export default function AppSidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto">
-        {filtered.map((item) => (
-          <RouterNavLink
-            key={item.path}
-            to={item.path}
-            onClick={() => setOpen(false)}
-            className={({ isActive }) => linkClass(isActive)}
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            <span>{item.label}</span>
-          </RouterNavLink>
-        ))}
+        {navEntries.filter(hasRole).map((entry) =>
+          isGroup(entry) ? (
+            <SidebarGroup key={entry.label} group={entry} />
+          ) : (
+            <RouterNavLink
+              key={entry.path}
+              to={entry.path}
+              onClick={() => setOpen(false)}
+              className={({ isActive }) => linkClass(isActive)}
+            >
+              <entry.icon className="h-4 w-4 shrink-0" />
+              <span>{entry.label}</span>
+            </RouterNavLink>
+          )
+        )}
       </nav>
 
       <div className="border-t border-sidebar-border pt-4 mt-4">
