@@ -16,6 +16,8 @@ import Configuracoes from "./pages/Configuracoes";
 import BI from "./pages/BI";
 import Despesas from "./pages/Despesas";
 import Usuarios from "./pages/Usuarios";
+import Categorias from "./pages/Categorias";
+import Profissionais from "./pages/Profissionais";
 import ClientBooking from "./pages/ClientBooking";
 import ClientAppointments from "./pages/ClientAppointments";
 import ClientPackages from "./pages/ClientPackages";
@@ -43,6 +45,8 @@ const App = () => (
             <Route path="/bi" element={<ProtectedRoute roles={["admin"]}><BI /></ProtectedRoute>} />
             <Route path="/despesas" element={<ProtectedRoute roles={["admin"]}><Despesas /></ProtectedRoute>} />
             <Route path="/usuarios" element={<ProtectedRoute roles={["admin"]}><Usuarios /></ProtectedRoute>} />
+            <Route path="/categorias" element={<ProtectedRoute roles={["admin"]}><Categorias /></ProtectedRoute>} />
+            <Route path="/profissionais" element={<ProtectedRoute roles={["admin"]}><Profissionais /></ProtectedRoute>} />
             <Route path="/agendar" element={<ProtectedRoute roles={["cliente"]}><ClientBooking /></ProtectedRoute>} />
             <Route path="/meus-agendamentos" element={<ProtectedRoute roles={["cliente"]}><ClientAppointments /></ProtectedRoute>} />
             <Route path="/meus-pacotes" element={<ProtectedRoute roles={["cliente"]}><ClientPackages /></ProtectedRoute>} />
