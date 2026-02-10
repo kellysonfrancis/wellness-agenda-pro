@@ -129,6 +129,23 @@ export default function Clientes() {
   };
 
   const handleDelete = async (id: string) => {
+    // Check for dependencies
+    const [apptRes, payRes, entRes] = await Promise.all([
+      supabase.from("appointments").select("id").eq("client_id", id).limit(1),
+      supabase.from("payments").select("id").eq("client_id", id).limit(1),
+      supabase.from("client_entitlements").select("id").eq("client_id", id).limit(1),
+    ]);
+    const deps: string[] = [];
+    if (apptRes.data?.length) deps.push("agendamentos");
+    if (payRes.data?.length) deps.push("pagamentos");
+    if (entRes.data?.length) deps.push("pacotes/planos");
+
+    if (deps.length > 0) {
+      toast({ title: "Não é possível excluir", description: `Cliente possui ${deps.join(", ")} vinculados.`, variant: "destructive" });
+      setConfirmDeleteId(null);
+      return;
+    }
+
     const { error } = await supabase.from("clients").delete().eq("id", id);
     if (error) {
       toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
