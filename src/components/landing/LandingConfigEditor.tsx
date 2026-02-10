@@ -9,9 +9,9 @@ interface LandingConfig {
   subtitulo: string;
   logo_url: string | null;
   banner_url: string | null;
-  cor_primaria: string;
-  cor_fundo: string;
-  cor_texto: string;
+  cor_primaria: string | null;
+  cor_fundo: string | null;
+  cor_texto: string | null;
   link_instagram: string | null;
   mensagem_boas_vindas: string | null;
   horario_funcionamento: string | null;
@@ -208,27 +208,27 @@ export default function LandingConfigEditor() {
           <div>
             <label className="text-xs text-muted-foreground">Primária</label>
             <div className="flex items-center gap-2 mt-1">
-              <input type="color" value={config.cor_primaria} onChange={(e) => setConfig({ ...config, cor_primaria: e.target.value })}
+              <input type="color" value={config.cor_primaria || "#c0392b"} onChange={(e) => setConfig({ ...config, cor_primaria: e.target.value })}
                 className="h-9 w-12 rounded border border-input cursor-pointer" />
-              <input value={config.cor_primaria} onChange={(e) => setConfig({ ...config, cor_primaria: e.target.value })}
+              <input value={config.cor_primaria || ""} onChange={(e) => setConfig({ ...config, cor_primaria: e.target.value })}
                 className="flex-1 rounded-lg border border-input bg-background px-2 py-1.5 text-xs font-mono" maxLength={7} />
             </div>
           </div>
           <div>
             <label className="text-xs text-muted-foreground">Fundo</label>
             <div className="flex items-center gap-2 mt-1">
-              <input type="color" value={config.cor_fundo} onChange={(e) => setConfig({ ...config, cor_fundo: e.target.value })}
+              <input type="color" value={config.cor_fundo || "#ffffff"} onChange={(e) => setConfig({ ...config, cor_fundo: e.target.value })}
                 className="h-9 w-12 rounded border border-input cursor-pointer" />
-              <input value={config.cor_fundo} onChange={(e) => setConfig({ ...config, cor_fundo: e.target.value })}
+              <input value={config.cor_fundo || ""} onChange={(e) => setConfig({ ...config, cor_fundo: e.target.value })}
                 className="flex-1 rounded-lg border border-input bg-background px-2 py-1.5 text-xs font-mono" maxLength={7} />
             </div>
           </div>
           <div>
             <label className="text-xs text-muted-foreground">Texto</label>
             <div className="flex items-center gap-2 mt-1">
-              <input type="color" value={config.cor_texto} onChange={(e) => setConfig({ ...config, cor_texto: e.target.value })}
+              <input type="color" value={config.cor_texto || "#333333"} onChange={(e) => setConfig({ ...config, cor_texto: e.target.value })}
                 className="h-9 w-12 rounded border border-input cursor-pointer" />
-              <input value={config.cor_texto} onChange={(e) => setConfig({ ...config, cor_texto: e.target.value })}
+              <input value={config.cor_texto || ""} onChange={(e) => setConfig({ ...config, cor_texto: e.target.value })}
                 className="flex-1 rounded-lg border border-input bg-background px-2 py-1.5 text-xs font-mono" maxLength={7} />
             </div>
           </div>
@@ -238,8 +238,8 @@ export default function LandingConfigEditor() {
       {/* Preview */}
       <div className="rounded-xl border border-border overflow-hidden">
         <p className="text-xs text-muted-foreground px-3 py-2 bg-muted/50">Pré-visualização</p>
-        <div style={{ backgroundColor: config.cor_fundo }}>
-          <div style={{ backgroundColor: config.cor_primaria }} className="py-6 px-4 text-center">
+        <div style={{ backgroundColor: config.cor_fundo || "#ffffff" }}>
+          <div style={{ backgroundColor: config.cor_primaria || "#c0392b" }} className="py-6 px-4 text-center">
             {config.banner_url && (
               <img src={config.banner_url} alt="" className="w-full h-24 object-cover absolute inset-0 opacity-20" style={{ position: "relative" }} />
             )}
@@ -249,7 +249,7 @@ export default function LandingConfigEditor() {
             <h3 className="text-lg font-bold" style={{ color: "#fff" }}>{config.nome_clinica}</h3>
             <p className="text-xs opacity-80" style={{ color: "#fff" }}>{config.subtitulo}</p>
           </div>
-          <div className="p-4 text-center" style={{ color: config.cor_texto }}>
+          <div className="p-4 text-center" style={{ color: config.cor_texto || "#333333" }}>
             {config.mensagem_boas_vindas && <p className="text-sm mb-2">{config.mensagem_boas_vindas}</p>}
             {config.horario_funcionamento && <p className="text-xs opacity-70">{config.horario_funcionamento}</p>}
             {!config.mensagem_boas_vindas && !config.horario_funcionamento && <p className="text-sm">Escolha o serviço, profissional, data e horário...</p>}
