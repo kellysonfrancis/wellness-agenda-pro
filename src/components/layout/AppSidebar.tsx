@@ -65,7 +65,7 @@ export default function AppSidebar() {
     }`;
 
   const sidebar = (
-    <div className="flex flex-col h-full bg-sidebar/80 backdrop-blur-xl border-r border-sidebar-border/30 w-64 p-4">
+    <div className="flex flex-col h-full bg-sidebar/70 backdrop-blur-2xl border-r border-sidebar-border/20 w-64 p-4">
       <div className="mb-6 px-3 flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary/20">
           <Stethoscope className="h-5 w-5 text-sidebar-primary" />
