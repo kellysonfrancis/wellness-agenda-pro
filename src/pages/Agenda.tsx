@@ -1,9 +1,14 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { Calendar, ChevronLeft, ChevronRight, Filter, X, Loader2, Plus, Pencil, Trash2, Save } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Filter, X, Loader2, Plus, Pencil, Trash2, Save, CalendarPlus, RefreshCw, Package } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import type { Categoria, AppointmentStatus } from "@/types/clinic";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { useAgendaData, type DBService, type DBAppointment } from "@/hooks/useAgendaData";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import PilatesMonthlyWizard from "@/components/agenda/PilatesMonthlyWizard";
+import PackageScheduler from "@/components/agenda/PackageScheduler";
+import MakeupClassModal from "@/components/agenda/MakeupClassModal";
 
 const statusBorderColors: Record<AppointmentStatus, string> = {
   reservado: "border-l-warning",
@@ -70,8 +75,9 @@ export default function Agenda() {
   const {
     appointments, clients, services, professionals, loading,
     createAppointment, updateAppointment, deleteAppointment,
-    getClientName, getServiceName, getProfessionalName,
+    getClientName, getServiceName, getProfessionalName, refetch,
   } = useAgendaData();
+  const { plans, makeupClasses, createMakeupClass, refetch: refetchEntitlements } = useEntitlements();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("week");
@@ -83,6 +89,11 @@ export default function Agenda() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState<AppointmentForm>({ ...emptyForm });
+  const [showPilatesWizard, setShowPilatesWizard] = useState(false);
+  const [showPackageScheduler, setShowPackageScheduler] = useState(false);
+  const [showMakeupModal, setShowMakeupModal] = useState(false);
+  const [selectedMakeup, setSelectedMakeup] = useState<typeof makeupClasses[0] | null>(null);
+  const [selectedMakeupAppt, setSelectedMakeupAppt] = useState<DBAppointment | null>(null);
 
   const today = new Date();
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate.toDateString()]);
@@ -178,6 +189,7 @@ export default function Agenda() {
     const endDate = new Date(startDate.getTime() + svc.duracao_min * 60000);
 
     if (editingId) {
+      const oldAppt = appointments.find((a) => a.id === editingId);
       const result = await updateAppointment(editingId, {
         client_id: form.clientId,
         service_id: form.serviceId,
@@ -188,6 +200,25 @@ export default function Agenda() {
         observacoes: form.observacoes || null,
       });
       if (result) {
+        // Auto-create makeup class when status changes to "faltou" for Pilates
+        if (form.status === "faltou" && oldAppt && oldAppt.status !== "faltou") {
+          const apptSvc = serviceMap[oldAppt.service_id];
+          if (apptSvc && apptSvc.categoria === "pilates") {
+            // Check if appointment has entitlement
+            const apptData = result as any;
+            if (apptData.entitlement_id) {
+              const prazo = new Date();
+              prazo.setDate(prazo.getDate() + 7);
+              await createMakeupClass({
+                entitlement_id: apptData.entitlement_id,
+                client_id: form.clientId,
+                original_appointment_id: editingId,
+                prazo_limite: prazo.toISOString().split("T")[0],
+              });
+              toast({ title: "Reposição criada", description: "O aluno tem 7 dias para reagendar." });
+            }
+          }
+        }
         setShowModal(false);
         setEditingId(null);
         toast({ title: "Agendamento atualizado!" });
@@ -261,6 +292,18 @@ export default function Agenda() {
             >
               <Filter className="h-3.5 w-3.5" />
               Filtros{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ""}
+            </button>
+            <button
+              onClick={() => setShowPilatesWizard(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
+            >
+              <CalendarPlus className="h-3.5 w-3.5" /> Pilates Mensal
+            </button>
+            <button
+              onClick={() => setShowPackageScheduler(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-info/30 bg-info/10 text-info text-sm font-medium hover:bg-info/20 transition-colors"
+            >
+              <Package className="h-3.5 w-3.5" /> Pacote
             </button>
             <button
               onClick={() => openNewModal()}
@@ -481,6 +524,75 @@ export default function Agenda() {
           </div>
         </div>
       )}
+
+      {/* Pending Makeups */}
+      {makeupClasses.filter((m) => m.status === "pendente").length > 0 && (
+        <div className="mt-6 bg-card rounded-xl border border-border shadow-sm p-4">
+          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+            <RefreshCw className="h-4 w-4 text-primary" />
+            Reposições Pendentes ({makeupClasses.filter((m) => m.status === "pendente").length})
+          </h3>
+          <div className="space-y-2">
+            {makeupClasses.filter((m) => m.status === "pendente").map((mk) => {
+              const isExpired = new Date(mk.prazo_limite) < new Date();
+              const originalAppt = appointments.find((a) => a.id === mk.original_appointment_id);
+              return (
+                <div key={mk.id} className={`flex items-center justify-between text-sm px-3 py-2 rounded-lg ${isExpired ? "bg-destructive/5 text-destructive" : "bg-muted/40"}`}>
+                  <div>
+                    <span className="font-medium">{getClientName(mk.client_id)}</span>
+                    <span className="text-muted-foreground ml-2">Prazo: {new Date(mk.prazo_limite).toLocaleDateString("pt-BR")}</span>
+                    {isExpired && <span className="ml-2 text-destructive text-xs font-medium">Expirado</span>}
+                  </div>
+                  {!isExpired && (
+                    <button
+                      onClick={() => {
+                        setSelectedMakeup(mk);
+                        setSelectedMakeupAppt(originalAppt || null);
+                        setShowMakeupModal(true);
+                      }}
+                      className="text-xs px-3 py-1 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90"
+                    >
+                      Reagendar
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Wizards */}
+      <PilatesMonthlyWizard
+        open={showPilatesWizard}
+        onClose={() => setShowPilatesWizard(false)}
+        clients={clients}
+        services={services}
+        professionals={professionals}
+        plans={plans}
+        existingAppointments={appointments}
+        onCreated={() => { refetch(); refetchEntitlements(); }}
+      />
+      <PackageScheduler
+        open={showPackageScheduler}
+        onClose={() => setShowPackageScheduler(false)}
+        clients={clients}
+        services={services}
+        professionals={professionals}
+        plans={plans}
+        onCreated={() => { refetch(); refetchEntitlements(); }}
+      />
+      <MakeupClassModal
+        open={showMakeupModal}
+        onClose={() => { setShowMakeupModal(false); setSelectedMakeup(null); }}
+        makeupClass={selectedMakeup}
+        clientName={selectedMakeup ? getClientName(selectedMakeup.client_id) : ""}
+        services={services}
+        professionals={professionals}
+        existingAppointments={appointments}
+        originalAppointment={selectedMakeupAppt}
+        onScheduled={() => { refetch(); refetchEntitlements(); }}
+      />
     </GlobalLayout>
   );
 }
