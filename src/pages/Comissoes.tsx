@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { DollarSign, Plus, Check, Pencil, TrendingUp, Users, Receipt } from "lucide-react";
+import { DollarSign, Plus, Check, Pencil, TrendingUp, Users, Receipt, Filter, X } from "lucide-react";
 
 const catLabel: Record<string, string> = { pilates: "Pilates", fisioterapia: "Fisioterapia", estetica: "Estética" };
 
@@ -21,6 +21,12 @@ export default function Comissoes() {
   const [showNewSale, setShowNewSale] = useState(false);
   const [editingRate, setEditingRate] = useState<string | null>(null);
   const [rateValue, setRateValue] = useState("");
+
+  // Filter state
+  const [filterSellerId, setFilterSellerId] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "pago" | "pendente">("all");
 
   // Form state for new sale
   const [sellerId, setSellerId] = useState("");
@@ -138,9 +144,38 @@ export default function Comissoes() {
 
   const getClientName = (id: string) => clients.find((c) => c.id === id)?.nome || id.slice(0, 8);
 
-  const totalPending = sales.filter((s) => !s.pago).reduce((sum, s) => sum + Number(s.valor_comissao), 0);
-  const totalPaid = sales.filter((s) => s.pago).reduce((sum, s) => sum + Number(s.valor_comissao), 0);
-  const totalSales = sales.reduce((sum, s) => sum + Number(s.valor_venda), 0);
+  // Filtered sales
+  const filteredSales = useMemo(() => {
+    return sales.filter((s) => {
+      if (filterSellerId && s.seller_id !== filterSellerId) return false;
+      if (filterStatus === "pago" && !s.pago) return false;
+      if (filterStatus === "pendente" && s.pago) return false;
+      if (filterDateFrom) {
+        const saleDate = new Date(s.created_at).toISOString().slice(0, 10);
+        if (saleDate < filterDateFrom) return false;
+      }
+      if (filterDateTo) {
+        const saleDate = new Date(s.created_at).toISOString().slice(0, 10);
+        if (saleDate > filterDateTo) return false;
+      }
+      return true;
+    });
+  }, [sales, filterSellerId, filterDateFrom, filterDateTo, filterStatus]);
+
+  const hasFilters = filterSellerId || filterDateFrom || filterDateTo || filterStatus !== "all";
+  const clearFilters = () => { setFilterSellerId(""); setFilterDateFrom(""); setFilterDateTo(""); setFilterStatus("all"); };
+
+  const totalPending = filteredSales.filter((s) => !s.pago).reduce((sum, s) => sum + Number(s.valor_comissao), 0);
+  const totalPaid = filteredSales.filter((s) => s.pago).reduce((sum, s) => sum + Number(s.valor_comissao), 0);
+  const totalSales = filteredSales.reduce((sum, s) => sum + Number(s.valor_venda), 0);
+
+  // All possible sellers for filter
+  const allSellers = useMemo(() => {
+    const map = new Map<string, string>();
+    professionals.forEach((p) => map.set(p.id, p.nome_exibicao));
+    profiles.forEach((p) => { if (!map.has(p.user_id)) map.set(p.user_id, p.nome); });
+    return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [professionals, profiles]);
 
   return (
     <GlobalLayout>
@@ -245,6 +280,52 @@ export default function Comissoes() {
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Filtros</span>
+          {hasFilters && (
+            <button onClick={clearFilters} className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <X className="h-3 w-3" /> Limpar
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Vendedor</label>
+            <Select value={filterSellerId || "all"} onValueChange={(v) => setFilterSellerId(v === "all" ? "" : v)}>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Todos" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {allSellers.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">De</label>
+            <Input type="date" className="h-9" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Até</label>
+            <Input type="date" className="h-9" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+            <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as any)}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="pago">Pago</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
       {/* Commission Rates - admin only */}
       {isAdmin && (
         <div className="bg-card rounded-xl border border-border shadow-sm mb-6">
@@ -310,14 +391,14 @@ export default function Comissoes() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sales.length === 0 ? (
+            {filteredSales.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                  Nenhuma venda registrada ainda
+                  {hasFilters ? "Nenhuma venda encontrada com os filtros aplicados" : "Nenhuma venda registrada ainda"}
                 </TableCell>
               </TableRow>
             ) : (
-              sales.map((s) => (
+              filteredSales.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="text-sm">{new Date(s.created_at).toLocaleDateString("pt-BR")}</TableCell>
                   <TableCell className="font-medium">{getSellerName(s.seller_id)}</TableCell>
