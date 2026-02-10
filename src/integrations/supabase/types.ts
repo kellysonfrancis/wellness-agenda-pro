@@ -14,6 +14,144 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          fim_em: string
+          id: string
+          inicio_em: string
+          observacoes: string | null
+          origem: Database["public"]["Enums"]["appointment_origin"]
+          profissional_id: string
+          service_id: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          fim_em: string
+          id?: string
+          inicio_em: string
+          observacoes?: string | null
+          origem?: Database["public"]["Enums"]["appointment_origin"]
+          profissional_id: string
+          service_id: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          fim_em?: string
+          id?: string
+          inicio_em?: string
+          observacoes?: string | null
+          origem?: Database["public"]["Enums"]["appointment_origin"]
+          profissional_id?: string
+          service_id?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          created_at: string
+          data_nascimento: string | null
+          email: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          telefone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_nascimento?: string | null
+          email?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          telefone: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_nascimento?: string | null
+          email?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          telefone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      professionals: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          especialidades: Database["public"]["Enums"]["categoria"][]
+          id: string
+          nome_exibicao: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          especialidades?: Database["public"]["Enums"]["categoria"][]
+          id?: string
+          nome_exibicao: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          especialidades?: Database["public"]["Enums"]["categoria"][]
+          id?: string
+          nome_exibicao?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professionals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -41,6 +179,45 @@ export type Database = {
           telefone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      services: {
+        Row: {
+          ativo: boolean
+          categoria: Database["public"]["Enums"]["categoria"]
+          created_at: string
+          duracao_min: number
+          id: string
+          max_alunos: number | null
+          nome: string
+          permite_pacote: boolean
+          preco_base: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria: Database["public"]["Enums"]["categoria"]
+          created_at?: string
+          duracao_min?: number
+          id?: string
+          max_alunos?: number | null
+          nome: string
+          permite_pacote?: boolean
+          preco_base?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: Database["public"]["Enums"]["categoria"]
+          created_at?: string
+          duracao_min?: number
+          id?: string
+          max_alunos?: number | null
+          nome?: string
+          permite_pacote?: boolean
+          preco_base?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -84,6 +261,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "recepcao" | "profissional" | "cliente"
+      appointment_origin: "recepcao" | "cliente" | "profissional"
+      appointment_status:
+        | "reservado"
+        | "confirmado"
+        | "em_atendimento"
+        | "concluido"
+        | "faltou"
+        | "cancelado"
+      categoria: "pilates" | "fisioterapia" | "estetica"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -212,6 +398,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "recepcao", "profissional", "cliente"],
+      appointment_origin: ["recepcao", "cliente", "profissional"],
+      appointment_status: [
+        "reservado",
+        "confirmado",
+        "em_atendimento",
+        "concluido",
+        "faltou",
+        "cancelado",
+      ],
+      categoria: ["pilates", "fisioterapia", "estetica"],
     },
   },
 } as const
