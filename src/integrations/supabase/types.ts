@@ -147,6 +147,72 @@ export type Database = {
         }
         Relationships: []
       }
+      product_plans: {
+        Row: {
+          ativo: boolean
+          aulas_por_mes: number | null
+          categoria: Database["public"]["Enums"]["categoria"]
+          created_at: string
+          creditos_total: number | null
+          desconto_familiar_pct: number | null
+          desconto_indicacao_pct: number | null
+          frequencia_pilates: string | null
+          id: string
+          ilimitado: boolean
+          itens_combo: Json | null
+          multa_cancelamento: number | null
+          nome: string
+          preco: number
+          termo_fidelizacao: string | null
+          tipo: Database["public"]["Enums"]["plan_type"]
+          updated_at: string
+          validade_dias: number | null
+          vigencia_meses: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          aulas_por_mes?: number | null
+          categoria: Database["public"]["Enums"]["categoria"]
+          created_at?: string
+          creditos_total?: number | null
+          desconto_familiar_pct?: number | null
+          desconto_indicacao_pct?: number | null
+          frequencia_pilates?: string | null
+          id?: string
+          ilimitado?: boolean
+          itens_combo?: Json | null
+          multa_cancelamento?: number | null
+          nome: string
+          preco?: number
+          termo_fidelizacao?: string | null
+          tipo: Database["public"]["Enums"]["plan_type"]
+          updated_at?: string
+          validade_dias?: number | null
+          vigencia_meses?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          aulas_por_mes?: number | null
+          categoria?: Database["public"]["Enums"]["categoria"]
+          created_at?: string
+          creditos_total?: number | null
+          desconto_familiar_pct?: number | null
+          desconto_indicacao_pct?: number | null
+          frequencia_pilates?: string | null
+          id?: string
+          ilimitado?: boolean
+          itens_combo?: Json | null
+          multa_cancelamento?: number | null
+          nome?: string
+          preco?: number
+          termo_fidelizacao?: string | null
+          tipo?: Database["public"]["Enums"]["plan_type"]
+          updated_at?: string
+          validade_dias?: number | null
+          vigencia_meses?: number | null
+        }
+        Relationships: []
+      }
       professionals: {
         Row: {
           ativo: boolean
@@ -303,6 +369,11 @@ export type Database = {
         | "faltou"
         | "cancelado"
       categoria: "pilates" | "fisioterapia" | "estetica"
+      plan_type:
+        | "mensal_recorrente"
+        | "pacote_creditos"
+        | "combo_itens"
+        | "creditos_estetica"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -441,6 +512,12 @@ export const Constants = {
         "cancelado",
       ],
       categoria: ["pilates", "fisioterapia", "estetica"],
+      plan_type: [
+        "mensal_recorrente",
+        "pacote_creditos",
+        "combo_itens",
+        "creditos_estetica",
+      ],
     },
   },
 } as const
