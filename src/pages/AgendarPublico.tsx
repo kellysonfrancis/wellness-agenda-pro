@@ -56,6 +56,7 @@ export default function AgendarPublico() {
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([]);
   const [config, setConfig] = useState<LandingConfig | null>(null);
   const [testimonials, setTestimonials] = useState<{ id: string; nome: string; depoimento: string; avaliacao: number }[]>([]);
+  const [holidays, setHolidays] = useState<{ data: string; descricao: string; recorrente: boolean }[]>([]);
 
   const [selectedService, setSelectedService] = useState<ServiceOption | null>(null);
   const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalOption | null>(null);
@@ -76,10 +77,11 @@ export default function AgendarPublico() {
       const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const headers = { "apikey": apikey };
 
-      const [optionsRes, configRes, testimonialsRes] = await Promise.all([
+      const [optionsRes, configRes, testimonialsRes, holidaysRes] = await Promise.all([
         fetch(`${baseUrl}/functions/v1/public-booking?action=options`, { headers }),
         fetch(`${baseUrl}/rest/v1/landing_config?select=*&limit=1`, { headers }),
         fetch(`${baseUrl}/rest/v1/landing_testimonials?select=id,nome,depoimento,avaliacao&ativo=eq.true&order=ordem`, { headers }),
+        fetch(`${baseUrl}/functions/v1/public-booking?action=holidays`, { headers }),
       ]);
 
       const optionsJson = await optionsRes.json();
@@ -92,6 +94,10 @@ export default function AgendarPublico() {
       }
       const testimonialsJson = await testimonialsRes.json();
       if (Array.isArray(testimonialsJson)) setTestimonials(testimonialsJson);
+
+      const holidaysJson = await holidaysRes.json();
+      if (holidaysJson.holidays) setHolidays(holidaysJson.holidays);
+
       setLoading(false);
     };
     fetchAll();
@@ -156,6 +162,18 @@ export default function AgendarPublico() {
   const corPrimaria = config?.cor_primaria || "#0d7377";
   const corFundo = config?.cor_fundo || undefined;
   const corTexto = config?.cor_texto || undefined;
+
+  // Holiday check helper
+  const isDateHoliday = (dateStr: string) => {
+    const monthDay = dateStr.slice(5); // MM-DD
+    return holidays.some((h) => h.recorrente ? h.data.slice(5) === monthDay : h.data === dateStr);
+  };
+
+  const getHolidayName = (dateStr: string) => {
+    const monthDay = dateStr.slice(5);
+    const h = holidays.find((h) => h.recorrente ? h.data.slice(5) === monthDay : h.data === dateStr);
+    return h?.descricao || "Feriado";
+  };
 
   // Generate next 14 days
   const today = startOfDay(new Date());
@@ -313,19 +331,24 @@ export default function AgendarPublico() {
                   const dayNum = format(dateObj, "dd");
                   const monthName = format(dateObj, "MMM", { locale: ptBR });
                   const isSelected = selectedDate === d;
+                  const holiday = isDateHoliday(d);
                   return (
                     <button
                       key={d}
-                      onClick={() => handleDateChange(d)}
+                      onClick={() => !holiday && handleDateChange(d)}
+                      disabled={holiday}
                       className={`flex-shrink-0 flex flex-col items-center py-2 px-3 rounded-xl border text-xs transition-all ${
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary font-semibold"
-                          : "border-border bg-card hover:border-primary/30"
+                        holiday
+                          ? "border-destructive/30 bg-destructive/5 text-destructive/60 cursor-not-allowed opacity-60"
+                          : isSelected
+                            ? "border-primary bg-primary/10 text-primary font-semibold"
+                            : "border-border bg-card hover:border-primary/30"
                       }`}
+                      title={holiday ? getHolidayName(d) : undefined}
                     >
                       <span className="uppercase">{dayName}</span>
                       <span className="text-lg font-bold">{dayNum}</span>
-                      <span className="uppercase">{monthName}</span>
+                      <span className="uppercase">{holiday ? "🚫" : monthName}</span>
                     </button>
                   );
                 })}
