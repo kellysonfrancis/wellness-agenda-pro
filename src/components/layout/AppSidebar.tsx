@@ -102,6 +102,7 @@ export default function AppSidebar() {
   const [sidebarTheme, setSidebarTheme] = useState(() => localStorage.getItem("sidebar-theme") || "default");
   const [customColor, setCustomColor] = useState(() => localStorage.getItem("sidebar-custom-color") || "#c2185b");
   const [sidebarOpacity, setSidebarOpacity] = useState(() => Number(localStorage.getItem("sidebar-opacity") ?? 70));
+  const [glassMode, setGlassMode] = useState(() => localStorage.getItem("sidebar-glass") === "true");
   const [showPicker, setShowPicker] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -142,7 +143,7 @@ export default function AppSidebar() {
     }`;
 
   const sidebar = (
-    <div data-sidebar-root className="flex flex-col h-full backdrop-blur-2xl border-r border-sidebar-border/20 w-64 p-4" style={{ backgroundColor: `hsl(var(--sidebar) / ${sidebarOpacity / 100})` }}>
+    <div data-sidebar-root className={`flex flex-col h-full w-64 p-4 ${glassMode ? "backdrop-blur-2xl border-r border-white/10" : "border-r border-sidebar-border/20"}`} style={{ backgroundColor: `hsl(var(--sidebar) / ${sidebarOpacity / 100})` }}>
       <div className="mb-6 px-3 flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary/20">
           <Stethoscope className="h-5 w-5 text-sidebar-primary" />
@@ -223,6 +224,21 @@ export default function AppSidebar() {
           />
           <span className="text-xs text-sidebar-foreground/60 w-7 text-right">{sidebarOpacity}%</span>
         </div>
+        <button
+          onClick={() => {
+            const next = !glassMode;
+            setGlassMode(next);
+            localStorage.setItem("sidebar-glass", String(next));
+          }}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors w-full ${
+            glassMode
+              ? "bg-sidebar-primary/20 text-sidebar-primary"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+          }`}
+        >
+          <Sparkles className="h-4 w-4" />
+          Glassmorphism
+        </button>
         <button
           onClick={() => setDark(!dark)}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground transition-colors w-full"
