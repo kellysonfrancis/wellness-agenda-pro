@@ -3,6 +3,7 @@ import { X, CalendarPlus, Loader2, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { DBPlan, DBEntitlement } from "@/hooks/useEntitlements";
+import { fetchCategorySchedules, validateAgainstSchedule } from "@/lib/scheduleValidation";
 
 interface Props {
   open: boolean;
@@ -92,6 +93,23 @@ export default function PackageScheduler({ open, onClose, clients, services, pro
     // Create scheduled sessions
     const validSessions = sessions.filter((s) => s.date && s.time && s.serviceId && s.profissionalId);
     if (validSessions.length > 0) {
+      // Validate schedule constraints
+      const schedules = await fetchCategorySchedules();
+      for (const s of validSessions) {
+        const svc = services.find((sv) => sv.id === s.serviceId);
+        if (svc) {
+          const schedule = schedules.find((cs) => cs.categoria === svc.categoria);
+          const [h, m] = s.time.split(":").map(Number);
+          const [y, mo, day] = s.date.split("-").map(Number);
+          const dt = new Date(y, mo - 1, day, h, m);
+          const err = validateAgainstSchedule(schedule, dt);
+          if (err) {
+            toast({ title: "Horário inválido", description: `${svc.nome} em ${s.date} ${s.time}: ${err}`, variant: "destructive" });
+            setSaving(false);
+            return;
+          }
+        }
+      }
       const appointments = validSessions.map((s) => {
         const svc = services.find((sv) => sv.id === s.serviceId);
         const duration = svc?.duracao_min || 50;

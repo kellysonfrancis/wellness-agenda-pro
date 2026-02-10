@@ -3,6 +3,7 @@ import { X, CalendarPlus, Loader2, Check, ChevronDown, ChevronUp } from "lucide-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { DBPlan, DBEntitlement } from "@/hooks/useEntitlements";
+import { fetchCategorySchedules, validateAgainstSchedule } from "@/lib/scheduleValidation";
 
 interface Props {
   open: boolean;
@@ -133,6 +134,21 @@ export default function PilatesMonthlyWizard({ open, onClose, clients, services,
       toast({ title: "Erro ao criar vínculo", description: entError.message, variant: "destructive" });
       setSaving(false);
       return;
+    }
+
+    // Validate schedule constraints for pilates
+    const schedules = await fetchCategorySchedules();
+    const pilatesSchedule = schedules.find((cs) => cs.categoria === "pilates");
+    for (const d of validDates) {
+      const [h, m] = d.time.split(":").map(Number);
+      const [y, mo, day] = d.date.split("-").map(Number);
+      const dt = new Date(y, mo - 1, day, h, m);
+      const err = validateAgainstSchedule(pilatesSchedule, dt);
+      if (err) {
+        toast({ title: "Horário inválido", description: `${d.date} ${d.time}: ${err}`, variant: "destructive" });
+        setSaving(false);
+        return;
+      }
     }
 
     // Create appointments

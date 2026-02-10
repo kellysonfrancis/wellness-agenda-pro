@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarPlus, ChevronRight, CheckCircle2 } from "lucide-react";
 import { addMinutes, format, setHours, setMinutes, startOfDay, addDays, isBefore } from "date-fns";
+import { validateAppointmentSchedule } from "@/lib/scheduleValidation";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
@@ -91,6 +92,12 @@ export default function ClientBooking() {
       const inicio = new Date(`${selectedDate}T${selectedTime}:00`);
       const duracao = selectedService?.duracao_min || 50;
       const fim = addMinutes(inicio, duracao);
+
+      // Validate against category schedule
+      if (selectedService?.categoria) {
+        const scheduleError = await validateAppointmentSchedule(selectedService.categoria, inicio);
+        if (scheduleError) throw new Error(scheduleError);
+      }
 
       const { error } = await supabase.from("appointments").insert({
         client_id: client.id,
