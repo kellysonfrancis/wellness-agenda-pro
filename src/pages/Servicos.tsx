@@ -1,6 +1,6 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { mockServices } from "@/data/mockData";
-import { Sparkles, Plus } from "lucide-react";
+import { Sparkles, Plus, Users } from "lucide-react";
 
 const catLabel: Record<string, string> = { pilates: "Pilates", fisioterapia: "Fisioterapia", estetica: "Estética" };
 const catColor: Record<string, string> = { pilates: "bg-primary/10 text-primary", fisioterapia: "bg-info/10 text-info", estetica: "bg-accent text-accent-foreground" };
@@ -36,6 +36,12 @@ export default function Servicos() {
               <span>{s.duracaoMin} min</span>
               <span className="font-semibold text-foreground">R$ {s.precoBase.toLocaleString("pt-BR")}</span>
             </div>
+            {s.maxAlunos && (
+              <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+                <Users className="h-3.5 w-3.5" />
+                <span>Máx. {s.maxAlunos} aluno{s.maxAlunos > 1 ? "s" : ""} por horário</span>
+              </div>
+            )}
             <div className="flex gap-2 mt-4">
               <button className="flex-1 text-xs py-1.5 rounded-lg bg-secondary text-secondary-foreground font-medium hover:bg-accent">Editar</button>
               <button className="text-xs py-1.5 px-3 rounded-lg border border-input text-muted-foreground hover:bg-muted">Duplicar</button>
