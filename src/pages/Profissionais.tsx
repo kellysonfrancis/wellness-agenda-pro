@@ -10,6 +10,7 @@ interface Professional {
   nome_exibicao: string;
   especialidades: string[];
   ativo: boolean;
+  ve_todas_comissoes: boolean;
 }
 
 interface Category {
@@ -25,7 +26,7 @@ interface Profile {
   email: string | null;
 }
 
-const emptyForm = { nome_exibicao: "", user_id: "", especialidades: [] as string[] };
+const emptyForm = { nome_exibicao: "", user_id: "", especialidades: [] as string[], ve_todas_comissoes: false };
 
 export default function Profissionais() {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
@@ -65,6 +66,7 @@ export default function Profissionais() {
       nome_exibicao: prof.nome_exibicao,
       user_id: prof.user_id || "",
       especialidades: [...prof.especialidades],
+      ve_todas_comissoes: prof.ve_todas_comissoes ?? false,
     });
     setShowForm(true);
   };
@@ -94,6 +96,7 @@ export default function Profissionais() {
       nome_exibicao: form.nome_exibicao.trim(),
       user_id: form.user_id || null,
       especialidades: form.especialidades,
+      ve_todas_comissoes: form.ve_todas_comissoes,
     };
 
     if (editingId) {
@@ -302,6 +305,19 @@ export default function Profissionais() {
                 {categories.length === 0 && (
                   <p className="text-xs text-muted-foreground mt-1">Cadastre categorias primeiro</p>
                 )}
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.ve_todas_comissoes}
+                    onChange={(e) => setForm({ ...form, ve_todas_comissoes: e.target.checked })}
+                    className="h-4 w-4 rounded border-input text-primary focus:ring-ring/30"
+                  />
+                  <span className="text-sm font-medium">Vê todas as vendas e comissões</span>
+                </label>
+                <p className="text-xs text-muted-foreground mt-1">Se desativado, vê apenas as próprias vendas</p>
               </div>
 
               <div className="flex gap-2 pt-2">

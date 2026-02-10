@@ -599,6 +599,7 @@ export type Database = {
           nome_exibicao: string
           updated_at: string
           user_id: string | null
+          ve_todas_comissoes: boolean
         }
         Insert: {
           ativo?: boolean
@@ -608,6 +609,7 @@ export type Database = {
           nome_exibicao: string
           updated_at?: string
           user_id?: string | null
+          ve_todas_comissoes?: boolean
         }
         Update: {
           ativo?: boolean
@@ -617,6 +619,7 @@ export type Database = {
           nome_exibicao?: string
           updated_at?: string
           user_id?: string | null
+          ve_todas_comissoes?: boolean
         }
         Relationships: [
           {
@@ -637,6 +640,7 @@ export type Database = {
           telefone: string | null
           updated_at: string
           user_id: string
+          ve_todas_vendas: boolean
         }
         Insert: {
           created_at?: string
@@ -646,6 +650,7 @@ export type Database = {
           telefone?: string | null
           updated_at?: string
           user_id: string
+          ve_todas_vendas?: boolean
         }
         Update: {
           created_at?: string
@@ -655,6 +660,7 @@ export type Database = {
           telefone?: string | null
           updated_at?: string
           user_id?: string
+          ve_todas_vendas?: boolean
         }
         Relationships: []
       }

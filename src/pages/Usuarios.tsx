@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from "react";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/contexts/AuthContext";
-import { UserCog, Plus, Loader2, Shield, Headset, Stethoscope, User, X, KeyRound } from "lucide-react";
+import { UserCog, Plus, Loader2, Shield, Headset, Stethoscope, User, X, KeyRound, Eye, EyeOff } from "lucide-react";
 
 interface UserWithRoles {
   user_id: string;
   nome: string;
   email: string | null;
   roles: AppRole[];
+  ve_todas_vendas: boolean;
 }
 
 const ROLE_OPTIONS: { role: AppRole; label: string; icon: React.ElementType }[] = [
@@ -42,6 +43,7 @@ export default function Usuarios() {
         user_id: p.user_id,
         nome: p.nome,
         email: p.email,
+        ve_todas_vendas: p.ve_todas_vendas ?? false,
         roles: (allRoles ?? [])
           .filter((r: any) => r.user_id === p.user_id)
           .map((r: any) => r.role as AppRole),
@@ -59,6 +61,11 @@ export default function Usuarios() {
     } else {
       await supabase.from("user_roles").insert({ user_id: userId, role });
     }
+    fetchUsers();
+  };
+
+  const toggleVeTodasVendas = async (userId: string, current: boolean) => {
+    await supabase.from("profiles").update({ ve_todas_vendas: !current } as any).eq("user_id", userId);
     fetchUsers();
   };
 
@@ -245,6 +252,7 @@ export default function Usuarios() {
                   {ROLE_OPTIONS.map(({ role, label }) => (
                     <th key={role} className="text-center px-3 py-3 font-medium text-muted-foreground">{label}</th>
                   ))}
+                  <th className="text-center px-3 py-3 font-medium text-muted-foreground">Vê Tudo</th>
                   <th className="text-center px-3 py-3 font-medium text-muted-foreground">Ações</th>
                 </tr>
               </thead>
@@ -271,6 +279,23 @@ export default function Usuarios() {
                         </td>
                       );
                     })}
+                    <td className="text-center px-3 py-3">
+                      {(u.roles.includes("recepcao") || u.roles.includes("profissional")) && !u.roles.includes("admin") ? (
+                        <button
+                          onClick={() => toggleVeTodasVendas(u.user_id, u.ve_todas_vendas)}
+                          className={`inline-flex items-center justify-center h-8 w-8 rounded-lg transition-colors ${
+                            u.ve_todas_vendas
+                              ? "bg-primary/10 text-primary hover:bg-primary/20"
+                              : "bg-muted text-muted-foreground hover:bg-muted/80"
+                          }`}
+                          title={u.ve_todas_vendas ? "Vê todas vendas/comissões" : "Vê apenas as próprias"}
+                        >
+                          {u.ve_todas_vendas ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
                     <td className="text-center px-3 py-3">
                       <button
                         onClick={() => { setResetUserId(u.user_id); setResetPassword(""); setResetError(null); setResetSuccess(null); }}
