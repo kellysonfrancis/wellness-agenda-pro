@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/contexts/AuthContext";
-import { UserCog, Plus, Loader2, Shield, Headset, Stethoscope, User, X, KeyRound, Eye, EyeOff, Pencil, Trash2, Save, AlertTriangle } from "lucide-react";
+import { UserCog, Plus, Loader2, Shield, Headset, Stethoscope, User, X, KeyRound, Eye, EyeOff, Pencil, Trash2, Save, AlertTriangle, Clock, UserCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface UserWithRoles {
@@ -45,6 +45,10 @@ export default function Usuarios() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Approve pending state
+  const [approvingUserId, setApprovingUserId] = useState<string | null>(null);
+  const [approveRole, setApproveRole] = useState<AppRole>("recepcao");
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     const { data: profiles } = await supabase.from("profiles").select("*");
@@ -75,6 +79,17 @@ export default function Usuarios() {
       await supabase.from("user_roles").insert({ user_id: userId, role });
     }
     fetchUsers();
+  };
+
+  const handleApproveUser = async (userId: string, role: AppRole) => {
+    const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
+    if (error) {
+      toast({ title: "Erro ao aprovar", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Funcionário aprovado!", description: `Papel "${role}" atribuído com sucesso.` });
+      setApprovingUserId(null);
+      fetchUsers();
+    }
   };
 
   const toggleVeTodasVendas = async (userId: string, current: boolean) => {
@@ -286,9 +301,21 @@ export default function Usuarios() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {users.map((u) => (
-                  <tr key={u.user_id} className="hover:bg-muted/40 transition-colors">
-                    <td className="px-4 py-3 font-medium">{u.nome || "—"}</td>
+                {[...users].sort((a, b) => (a.roles.length === 0 ? -1 : b.roles.length === 0 ? 1 : 0)).map((u) => {
+                  const isPending = u.roles.length === 0;
+                  return (
+                  <tr key={u.user_id} className={`hover:bg-muted/40 transition-colors ${isPending ? "bg-warning/5" : ""}`}>
+                    <td className="px-4 py-3 font-medium">
+                      <div className="flex items-center gap-2">
+                        {u.nome || "—"}
+                        {isPending && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/15 text-warning text-xs font-medium">
+                            <Clock className="h-3 w-3" /> Pendente
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{u.email || "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{u.email || "—"}</td>
                     {ROLE_OPTIONS.map(({ role, icon: Icon }) => {
                       const has = u.roles.includes(role);
@@ -323,6 +350,30 @@ export default function Usuarios() {
                     </td>
                     <td className="text-center px-3 py-3">
                       <div className="flex items-center justify-center gap-1">
+                        {isPending && (
+                          approvingUserId === u.user_id ? (
+                            <div className="flex items-center gap-1">
+                              <select value={approveRole} onChange={(e) => setApproveRole(e.target.value as AppRole)}
+                                className="rounded-lg border border-input bg-background px-2 py-1 text-xs">
+                                <option value="recepcao">Recepção</option>
+                                <option value="profissional">Profissional</option>
+                              </select>
+                              <button onClick={() => handleApproveUser(u.user_id, approveRole)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90">
+                                <UserCheck className="h-3 w-3" /> Aprovar
+                              </button>
+                              <button onClick={() => setApprovingUserId(null)} className="text-xs text-muted-foreground hover:underline">×</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setApprovingUserId(u.user_id); setApproveRole("recepcao"); }}
+                              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
+                              title="Aprovar funcionário"
+                            >
+                              <UserCheck className="h-3.5 w-3.5" /> Aprovar
+                            </button>
+                          )
+                        )}
                         <button
                           onClick={() => openEditProfile(u)}
                           className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
@@ -363,7 +414,8 @@ export default function Usuarios() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
