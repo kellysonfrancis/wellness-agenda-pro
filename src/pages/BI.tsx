@@ -1,6 +1,6 @@
 import { useState } from "react";
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { BarChart3, TrendingUp, TrendingDown, Users, PieChart, Receipt } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Users, PieChart, Receipt, Landmark, Wallet } from "lucide-react";
 import {
   BarChart, Bar, PieChart as RPie, Pie, Cell,
   FunnelChart, Funnel, LabelList, ComposedChart, Line,
@@ -19,6 +19,7 @@ export default function BI() {
     totalRevenue, avgTicket, activeClients,
     totalExpenses, totalFixedExpenses, totalVariableExpenses,
     profit, profitMargin, revenueVsExpenses, expenseByCategory,
+    cashFlowByAccount, accountBalances,
   } = useBIData(period, category);
 
   return (
@@ -165,6 +166,35 @@ export default function BI() {
               <Legend />
               <Tooltip />
             </RPie>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      {/* Cash Flow by Account */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <ChartCard title="Fluxo de Caixa por Conta" icon={Landmark}>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={cashFlowByAccount} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(170 15% 88%)" />
+              <XAxis type="number" tick={{ fontSize: 12 }} stroke="hsl(200 10% 45%)" />
+              <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 11 }} stroke="hsl(200 10% 45%)" />
+              <Tooltip formatter={(v: number) => `R$ ${v.toLocaleString("pt-BR")}`} />
+              <Legend />
+              <Bar dataKey="entradas" name="Entradas" fill="hsl(152 60% 40%)" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="saidas" name="Saídas" fill="hsl(0 72% 51%)" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Saldo Atual por Conta" icon={Wallet}>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={accountBalances} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(170 15% 88%)" />
+              <XAxis type="number" tick={{ fontSize: 12 }} stroke="hsl(200 10% 45%)" />
+              <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 11 }} stroke="hsl(200 10% 45%)" />
+              <Tooltip formatter={(v: number) => `R$ ${v.toLocaleString("pt-BR")}`} />
+              <Bar dataKey="saldo" name="Saldo" fill="hsl(205 80% 50%)" radius={[0, 6, 6, 0]} />
+            </BarChart>
           </ResponsiveContainer>
         </ChartCard>
       </div>
