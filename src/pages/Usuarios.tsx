@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/contexts/AuthContext";
-import { UserCog, Plus, Loader2, Shield, Headset, Stethoscope, User, X } from "lucide-react";
+import { UserCog, Plus, Loader2, Shield, Headset, Stethoscope, User, X, KeyRound } from "lucide-react";
 
 interface UserWithRoles {
   user_id: string;
@@ -26,6 +26,11 @@ export default function Usuarios() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [form, setForm] = useState({ nome: "", email: "", password: "", role: "cliente" as AppRole });
+  const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -55,6 +60,32 @@ export default function Usuarios() {
       await supabase.from("user_roles").insert({ user_id: userId, role });
     }
     fetchUsers();
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+    setResetSuccess(null);
+    setResetting(true);
+
+    try {
+      const res = await supabase.functions.invoke("reset-password", {
+        body: { user_id: resetUserId, new_password: resetPassword },
+      });
+
+      if (res.error) {
+        setResetError(res.error.message || "Erro ao resetar senha");
+      } else if (res.data?.error) {
+        setResetError(res.data.error);
+      } else {
+        setResetSuccess("Senha alterada com sucesso!");
+        setResetPassword("");
+        setTimeout(() => { setResetUserId(null); setResetSuccess(null); }, 2000);
+      }
+    } catch (err: any) {
+      setResetError(err.message || "Erro inesperado");
+    }
+    setResetting(false);
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -209,11 +240,12 @@ export default function Usuarios() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Usuário</th>
+                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Usuário</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">E-mail</th>
                   {ROLE_OPTIONS.map(({ role, label }) => (
                     <th key={role} className="text-center px-3 py-3 font-medium text-muted-foreground">{label}</th>
                   ))}
+                  <th className="text-center px-3 py-3 font-medium text-muted-foreground">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -235,14 +267,72 @@ export default function Usuarios() {
                             title={has ? `Remover ${role}` : `Adicionar ${role}`}
                           >
                             <Icon className="h-4 w-4" />
-                          </button>
+                      </button>
                         </td>
                       );
                     })}
+                    <td className="text-center px-3 py-3">
+                      <button
+                        onClick={() => { setResetUserId(u.user_id); setResetPassword(""); setResetError(null); setResetSuccess(null); }}
+                        className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
+                        title="Resetar senha"
+                      >
+                        <KeyRound className="h-4 w-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+      {/* Reset password modal */}
+      {resetUserId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30" onClick={() => setResetUserId(null)}>
+          <div className="bg-card rounded-xl border border-border shadow-lg p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-sm font-semibold mb-1">Resetar Senha</h2>
+            <p className="text-xs text-muted-foreground mb-4">
+              {users.find(u => u.user_id === resetUserId)?.nome || "Usuário"}
+            </p>
+
+            {resetError && <div className="mb-3 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{resetError}</div>}
+            {resetSuccess && <div className="mb-3 p-3 rounded-lg bg-success/10 text-success text-sm">{resetSuccess}</div>}
+
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label className="text-sm text-muted-foreground" htmlFor="reset-pw">Nova senha</label>
+                <input
+                  id="reset-pw"
+                  type="password"
+                  required
+                  minLength={6}
+                  maxLength={72}
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  placeholder="Mínimo 6 caracteres"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={resetting}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                >
+                  {resetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                  Resetar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setResetUserId(null)}
+                  className="px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
