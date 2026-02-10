@@ -1,9 +1,11 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe, Clock } from "lucide-react";
+import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe, Clock, Palette } from "lucide-react";
 import LandingConfigEditor from "@/components/landing/LandingConfigEditor";
 import TestimonialsEditor from "@/components/landing/TestimonialsEditor";
 import CategorySchedulesEditor from "@/components/agenda/CategorySchedulesEditor";
 import HolidaysEditor from "@/components/agenda/HolidaysEditor";
+import ThemeCustomizer from "@/components/theme/ThemeCustomizer";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -211,7 +213,14 @@ export default function Configuracoes() {
         <p className="text-sm text-muted-foreground mt-1">Parâmetros gerais da clínica</p>
       </div>
 
-      <div className="max-w-xl space-y-6">
+      <Tabs defaultValue="geral" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="geral"><Settings className="h-4 w-4 mr-1.5" />Geral</TabsTrigger>
+          <TabsTrigger value="personalizar"><Palette className="h-4 w-4 mr-1.5" />Personalizar</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="geral">
+          <div className="max-w-xl space-y-6">
         <div className="bg-card rounded-xl border border-border shadow-sm p-5 space-y-4">
           <h2 className="text-sm font-semibold">Política de Cancelamento</h2>
           <div>
@@ -457,7 +466,15 @@ export default function Configuracoes() {
           </p>
           <TestimonialsEditor />
         </div>
-      </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="personalizar">
+          <div className="max-w-xl">
+            <ThemeCustomizer />
+          </div>
+        </TabsContent>
+      </Tabs>
     </GlobalLayout>
   );
 }
