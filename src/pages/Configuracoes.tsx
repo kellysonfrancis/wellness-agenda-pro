@@ -1,10 +1,12 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe } from "lucide-react";
+import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe, Clock } from "lucide-react";
 import LandingConfigEditor from "@/components/landing/LandingConfigEditor";
 import TestimonialsEditor from "@/components/landing/TestimonialsEditor";
+import CategorySchedulesEditor from "@/components/agenda/CategorySchedulesEditor";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface WaLine {
   id: string;
@@ -423,6 +425,8 @@ export default function Configuracoes() {
             </ol>
           </div>
         </div>
+
+        <CategorySchedulesEditor />
 
         <button className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
           Salvar Configurações

@@ -228,6 +228,36 @@ export type Database = {
         }
         Relationships: []
       }
+      category_schedules: {
+        Row: {
+          categoria: string
+          created_at: string
+          dias_semana: number[]
+          hora_fim: number
+          hora_inicio: number
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          dias_semana?: number[]
+          hora_fim?: number
+          hora_inicio?: number
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          dias_semana?: number[]
+          hora_fim?: number
+          hora_inicio?: number
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_entitlements: {
         Row: {
           client_id: string
