@@ -98,12 +98,24 @@ export default function Categorias() {
     }
   };
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   const handleDelete = async (id: string) => {
+    const cat = categories.find(c => c.id === id);
+    if (cat) {
+      const { data: svcs } = await supabase.from("services").select("id").eq("categoria", cat.slug as any).limit(1);
+      if (svcs?.length) {
+        toast({ title: "Não é possível excluir", description: "Esta categoria possui serviços vinculados. Desative-a em vez de excluir.", variant: "destructive" });
+        setConfirmDeleteId(null);
+        return;
+      }
+    }
     const { error } = await supabase.from("categories").delete().eq("id", id);
     if (error) {
       toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Categoria excluída!" });
+      setConfirmDeleteId(null);
       fetchCategories();
     }
   };
@@ -157,9 +169,15 @@ export default function Categorias() {
                 <button onClick={() => toggleAtivo(cat)} className="text-xs py-1.5 px-3 rounded-lg border border-input text-muted-foreground hover:bg-muted transition-colors">
                   {cat.ativo ? "Desativar" : "Ativar"}
                 </button>
-                <button onClick={() => handleDelete(cat.id)} className="text-xs py-1.5 px-2.5 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors">
-                  <Trash2 className="h-3 w-3" />
-                </button>
+                {confirmDeleteId === cat.id ? (
+                  <button onClick={() => handleDelete(cat.id)} className="text-xs py-1.5 px-2.5 rounded-lg bg-destructive text-destructive-foreground font-medium hover:opacity-90 transition-opacity">
+                    Confirmar
+                  </button>
+                ) : (
+                  <button onClick={() => setConfirmDeleteId(cat.id)} className="text-xs py-1.5 px-2.5 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
               </div>
             </div>
           ))}

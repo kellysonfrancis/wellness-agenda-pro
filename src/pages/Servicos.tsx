@@ -143,6 +143,12 @@ export default function Servicos() {
   };
 
   const handleDelete = async (id: string) => {
+    const { data: appts } = await supabase.from("appointments").select("id").eq("service_id", id).limit(1);
+    if (appts?.length) {
+      toast({ title: "Não é possível excluir", description: "Este serviço possui agendamentos vinculados. Desative-o em vez de excluir.", variant: "destructive" });
+      setConfirmDeleteId(null);
+      return;
+    }
     const { error } = await supabase.from("services").delete().eq("id", id);
     if (error) {
       toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });

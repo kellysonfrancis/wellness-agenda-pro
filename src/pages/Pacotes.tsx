@@ -138,6 +138,12 @@ export default function Pacotes() {
   };
 
   const handleDelete = async (id: string) => {
+    const { data: ents } = await supabase.from("client_entitlements").select("id").eq("product_plan_id", id).limit(1);
+    if (ents?.length) {
+      toast({ title: "Não é possível excluir", description: "Este pacote possui clientes vinculados. Desative-o em vez de excluir.", variant: "destructive" });
+      setConfirmDeleteId(null);
+      return;
+    }
     const { error } = await supabase.from("product_plans").delete().eq("id", id);
     if (error) toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
     else { toast({ title: "Pacote excluído!" }); setConfirmDeleteId(null); fetchAll(); }

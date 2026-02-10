@@ -129,6 +129,12 @@ export default function Profissionais() {
   };
 
   const handleDelete = async (id: string) => {
+    const { data: appts } = await supabase.from("appointments").select("id").eq("profissional_id", id).limit(1);
+    if (appts?.length) {
+      toast({ title: "Não é possível excluir", description: "Este profissional possui agendamentos vinculados. Desative-o em vez de excluir.", variant: "destructive" });
+      setConfirmDeleteId(null);
+      return;
+    }
     const { error } = await supabase.from("professionals").delete().eq("id", id);
     if (error) {
       toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
