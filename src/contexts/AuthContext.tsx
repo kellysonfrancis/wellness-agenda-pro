@@ -10,6 +10,10 @@ interface Profile {
   nome: string;
   email: string | null;
   telefone: string | null;
+  data_nascimento: string | null;
+  endereco: string | null;
+  cpf: string | null;
+  whatsapp: string | null;
 }
 
 interface AuthContextType {
@@ -18,7 +22,7 @@ interface AuthContextType {
   roles: AppRole[];
   loading: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
-  signup: (email: string, password: string, nome: string) => Promise<{ error: string | null }>;
+  signup: (email: string, password: string, nome: string, extra?: Record<string, string>) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   isRole: (...roles: AppRole[]) => boolean;
 }
@@ -81,12 +85,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error?.message ?? null };
   }, []);
 
-  const signup = useCallback(async (email: string, password: string, nome: string) => {
+  const signup = useCallback(async (email: string, password: string, nome: string, extra?: Record<string, string>) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { nome },
+        data: { nome, ...extra },
         emailRedirectTo: window.location.origin,
       },
     });
