@@ -25,7 +25,7 @@ const categoryColors: Record<Categoria, string> = {
   estetica: "bg-accent text-accent-foreground",
 };
 
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 7);
+const HOURS = Array.from({ length: 17 }, (_, i) => i + 5);
 
 function WhatsAppIndicator({ status }: { status?: string }) {
   if (!status) return null;

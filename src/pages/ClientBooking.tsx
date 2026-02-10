@@ -79,8 +79,8 @@ export default function ClientBooking() {
   }).filter(Boolean) as string[];
 
   // Time slots
-  const timeSlots = Array.from({ length: 11 }, (_, i) => {
-    const h = 7 + i;
+  const timeSlots = Array.from({ length: 17 }, (_, i) => {
+    const h = 5 + i;
     return [`${String(h).padStart(2, "0")}:00`, `${String(h).padStart(2, "0")}:30`];
   }).flat();
 
