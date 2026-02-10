@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Calendar, Users, DollarSign, Sparkles,
   Package, Settings, CalendarPlus, CalendarCheck, ShoppingBag,
-  LogOut, Menu, X, BarChart3
+  LogOut, Menu, X, BarChart3, Receipt
 } from "lucide-react";
 import { useState } from "react";
 import type { UserRole } from "@/types/clinic";
@@ -20,6 +20,7 @@ const navItems: NavItem[] = [
   { label: "Agenda", path: "/agenda", icon: Calendar, roles: ["admin", "recepcao", "profissional"] },
   { label: "Clientes", path: "/clientes", icon: Users, roles: ["admin", "recepcao"] },
   { label: "Financeiro", path: "/financeiro", icon: DollarSign, roles: ["admin", "recepcao"] },
+  { label: "Despesas", path: "/despesas", icon: Receipt, roles: ["admin"] },
   { label: "Serviços", path: "/servicos", icon: Sparkles, roles: ["admin"] },
   { label: "Pacotes", path: "/pacotes", icon: Package, roles: ["admin"] },
   { label: "BI / Análises", path: "/bi", icon: BarChart3, roles: ["admin"] },

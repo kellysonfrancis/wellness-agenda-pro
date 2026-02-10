@@ -132,6 +132,22 @@ export interface RehabPlan {
   criadoEm: string;
 }
 
+export type ExpenseType = "fixa" | "variavel";
+export type ExpenseCategory = "aluguel" | "salarios" | "materiais" | "equipamentos" | "marketing" | "manutencao" | "impostos" | "outros";
+
+export interface Expense {
+  id: string;
+  tipo: ExpenseType;
+  categoria: ExpenseCategory;
+  descricao: string;
+  valor: number;
+  dataVencimento: string;
+  pago: boolean;
+  pagoEm?: string | null;
+  recorrente: boolean;
+  criadoEm: string;
+}
+
 export interface ClinicSettings {
   cancelamentoHorasAntes: number;
   confirmacaoInicioHoras: number;
