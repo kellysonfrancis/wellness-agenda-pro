@@ -103,6 +103,7 @@ export default function AppSidebar() {
   const [customColor, setCustomColor] = useState(() => localStorage.getItem("sidebar-custom-color") || "#c2185b");
   const [sidebarOpacity, setSidebarOpacity] = useState(() => Number(localStorage.getItem("sidebar-opacity") ?? 70));
   const [glassMode, setGlassMode] = useState(() => localStorage.getItem("sidebar-glass") === "true");
+  const [blurLevel, setBlurLevel] = useState<"leve" | "medio" | "forte">(() => (localStorage.getItem("sidebar-blur") as any) || "forte");
   const [showPicker, setShowPicker] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -143,7 +144,7 @@ export default function AppSidebar() {
     }`;
 
   const sidebar = (
-    <div data-sidebar-root className={`flex flex-col h-full w-64 p-4 ${glassMode ? "backdrop-blur-2xl border-r border-white/10" : "border-r border-sidebar-border/20"}`} style={{ backgroundColor: `hsl(var(--sidebar) / ${sidebarOpacity / 100})` }}>
+    <div data-sidebar-root className={`flex flex-col h-full w-64 p-4 ${glassMode ? `${blurLevel === "leve" ? "backdrop-blur-md" : blurLevel === "medio" ? "backdrop-blur-xl" : "backdrop-blur-2xl"} border-r border-white/10` : "border-r border-sidebar-border/20"}`} style={{ backgroundColor: `hsl(var(--sidebar) / ${sidebarOpacity / 100})` }}>
       <div className="mb-6 px-3 flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary/20">
           <Stethoscope className="h-5 w-5 text-sidebar-primary" />
@@ -239,6 +240,27 @@ export default function AppSidebar() {
           <Sparkles className="h-4 w-4" />
           Glassmorphism
         </button>
+        {glassMode && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5">
+            <span className="text-xs text-sidebar-foreground/60 mr-1">Blur</span>
+            {(["leve", "medio", "forte"] as const).map((level) => (
+              <button
+                key={level}
+                onClick={() => {
+                  setBlurLevel(level);
+                  localStorage.setItem("sidebar-blur", level);
+                }}
+                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  blurLevel === level
+                    ? "bg-sidebar-primary/20 text-sidebar-primary"
+                    : "text-sidebar-foreground/50 hover:text-sidebar-foreground/80"
+                }`}
+              >
+                {level === "leve" ? "Leve" : level === "medio" ? "Médio" : "Forte"}
+              </button>
+            ))}
+          </div>
+        )}
         <button
           onClick={() => setDark(!dark)}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground transition-colors w-full"
