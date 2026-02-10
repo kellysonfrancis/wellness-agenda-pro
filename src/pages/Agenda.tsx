@@ -200,11 +200,43 @@ export default function Agenda() {
         observacoes: form.observacoes || null,
       });
       if (result) {
+        // Auto-create commission when status changes to "concluido"
+        if (form.status === "concluido" && oldAppt && oldAppt.status !== "concluido") {
+          const apptSvc = serviceMap[form.serviceId] || serviceMap[oldAppt.service_id];
+          if (apptSvc) {
+            try {
+              const { data: rateData } = await supabase
+                .from("commission_rates")
+                .select("percentual")
+                .eq("categoria", apptSvc.categoria)
+                .maybeSingle();
+
+              const perc = rateData ? Number(rateData.percentual) : 0;
+              const valorVenda = Number(apptSvc.preco_base);
+              const valorComissao = (valorVenda * perc) / 100;
+
+              if (valorVenda > 0) {
+                await supabase.from("sales").insert({
+                  seller_id: form.profissionalId,
+                  seller_type: "profissional",
+                  client_id: form.clientId,
+                  categoria: apptSvc.categoria,
+                  valor_venda: valorVenda,
+                  percentual_comissao: perc,
+                  valor_comissao: valorComissao,
+                });
+                toast({ title: "Comissão registrada", description: `${perc}% = R$ ${valorComissao.toFixed(2)}` });
+              }
+            } catch (err) {
+              console.error("Erro ao registrar comissão:", err);
+            }
+          }
+        }
+
         // Auto-create makeup class when status changes to "faltou" for Pilates
         if (form.status === "faltou" && oldAppt && oldAppt.status !== "faltou") {
           const apptSvc = serviceMap[oldAppt.service_id];
           if (apptSvc && apptSvc.categoria === "pilates") {
-            // Check if appointment has entitlement
             const apptData = result as any;
             if (apptData.entitlement_id) {
               const prazo = new Date();

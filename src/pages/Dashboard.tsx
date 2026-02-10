@@ -31,9 +31,12 @@ interface DBService { id: string; nome: string; duracao_min: number }
 interface DBProfessional { id: string; nome_exibicao: string; user_id: string | null }
 interface DBEntitlement { id: string; client_id: string; status: string }
 
-function StatCard({ icon: Icon, label, value, subtitle, color }: { icon: React.ElementType; label: string; value: string | number; subtitle?: string; color?: string }) {
+function StatCard({ icon: Icon, label, value, subtitle, color, delay = 0 }: { icon: React.ElementType; label: string; value: string | number; subtitle?: string; color?: string; delay?: number }) {
   return (
-    <div className="bg-card rounded-xl border border-border shadow-sm p-5 flex items-start gap-4">
+    <div
+      className="bg-card rounded-xl border border-border shadow-sm p-5 flex items-start gap-4 animate-slide-up card-hover"
+      style={{ animationDelay: `${delay}ms`, animationFillMode: "backwards" }}
+    >
       <div className={`p-2.5 rounded-lg ${color ?? "bg-secondary text-secondary-foreground"}`}>
         <Icon className="h-5 w-5" />
       </div>
@@ -178,6 +181,7 @@ function AdminDashboard({ data }: { data: ReturnType<typeof useDashboardData> })
           value={`R$ ${monthRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
           subtitle={revenueGrowth !== null ? `${revenueGrowth >= 0 ? "+" : ""}${revenueGrowth}% vs mês anterior` : "Primeiro mês"}
           color="bg-success/10 text-success"
+          delay={0}
         />
         <StatCard
           icon={Calendar}
@@ -185,6 +189,7 @@ function AdminDashboard({ data }: { data: ReturnType<typeof useDashboardData> })
           value={todayAppts.length}
           subtitle={`${todayConcluidos} concluídos · ${todayPendentes} pendentes`}
           color="bg-primary/10 text-primary"
+          delay={60}
         />
         <StatCard
           icon={Percent}
@@ -192,6 +197,7 @@ function AdminDashboard({ data }: { data: ReturnType<typeof useDashboardData> })
           value={`${occupancyRate}%`}
           subtitle={`${professionals.length} profissionais ativos`}
           color="bg-info/10 text-info"
+          delay={120}
         />
         <StatCard
           icon={Ban}
@@ -199,6 +205,7 @@ function AdminDashboard({ data }: { data: ReturnType<typeof useDashboardData> })
           value={inadimplencia.count}
           subtitle={`R$ ${inadimplencia.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em aberto`}
           color="bg-destructive/10 text-destructive"
+          delay={180}
         />
       </div>
 
