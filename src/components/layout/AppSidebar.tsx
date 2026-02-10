@@ -4,9 +4,17 @@ import {
   LayoutDashboard, Calendar, Users, DollarSign, Sparkles,
   Package, Settings, CalendarPlus, CalendarCheck, ShoppingBag,
   LogOut, Menu, X, BarChart3, Receipt, UserCog, Tags, Stethoscope, HandCoins, ShoppingCart, AlertTriangle, Activity, UserX, TrendingUp, ClipboardList, ListOrdered,
-  Moon, Sun, MessageSquare
+  Moon, Sun, MessageSquare, Palette
 } from "lucide-react";
 import { useState, useEffect } from "react";
+
+const SIDEBAR_THEMES = [
+  { id: "default", label: "Padrão", color: "hsl(333 71% 50%)" },
+  { id: "teal", label: "Teal", color: "hsl(172 60% 50%)" },
+  { id: "blue", label: "Azul", color: "hsl(210 80% 60%)" },
+  { id: "purple", label: "Roxo", color: "hsl(270 70% 65%)" },
+  { id: "neutral", label: "Neutro", color: "hsl(0 0% 70%)" },
+] as const;
 
 interface NavItem {
   label: string;
@@ -49,9 +57,21 @@ export default function AppSidebar() {
   const [open, setOpen] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
 
+  const [sidebarTheme, setSidebarTheme] = useState(() => localStorage.getItem("sidebar-theme") || "default");
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
+
+  useEffect(() => {
+    const el = document.querySelector("[data-sidebar-root]");
+    if (!el) return;
+    SIDEBAR_THEMES.forEach((t) => el.classList.remove(`sidebar-theme-${t.id}`));
+    if (sidebarTheme !== "default") {
+      el.classList.add(`sidebar-theme-${sidebarTheme}`);
+    }
+    localStorage.setItem("sidebar-theme", sidebarTheme);
+  }, [sidebarTheme]);
 
   if (!profile) return null;
 
@@ -65,7 +85,7 @@ export default function AppSidebar() {
     }`;
 
   const sidebar = (
-    <div className="flex flex-col h-full bg-sidebar/70 backdrop-blur-2xl border-r border-sidebar-border/20 w-64 p-4">
+    <div data-sidebar-root className="flex flex-col h-full bg-sidebar/70 backdrop-blur-2xl border-r border-sidebar-border/20 w-64 p-4">
       <div className="mb-6 px-3 flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary/20">
           <Stethoscope className="h-5 w-5 text-sidebar-primary" />
@@ -94,6 +114,20 @@ export default function AppSidebar() {
         <div className="px-3 mb-3">
           <p className="text-sm font-medium text-sidebar-foreground">{profile.nome || profile.email}</p>
           <p className="text-xs text-sidebar-foreground/60 capitalize">{roles.join(", ") || "sem papel"}</p>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-2">
+          <Palette className="h-4 w-4 text-sidebar-foreground/70 shrink-0" />
+          {SIDEBAR_THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setSidebarTheme(t.id)}
+              title={t.label}
+              className={`h-5 w-5 rounded-full border-2 transition-transform hover:scale-110 ${
+                sidebarTheme === t.id ? "border-sidebar-foreground scale-110" : "border-transparent"
+              }`}
+              style={{ backgroundColor: t.color }}
+            />
+          ))}
         </div>
         <button
           onClick={() => setDark(!dark)}
