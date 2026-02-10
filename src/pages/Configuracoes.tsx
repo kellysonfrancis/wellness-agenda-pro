@@ -1,5 +1,6 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle } from "lucide-react";
+import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe } from "lucide-react";
+import LandingConfigEditor from "@/components/landing/LandingConfigEditor";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -425,6 +426,18 @@ export default function Configuracoes() {
         <button className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
           Salvar Configurações
         </button>
+
+        {/* Landing Page Configuration */}
+        <div className="bg-card rounded-xl border border-border shadow-sm p-5 space-y-4">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Globe className="h-4 w-4 text-primary" />
+            Página de Agendamento Público
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Personalize a landing page pública de agendamento (logo, cores, nome) e copie o link para compartilhar.
+          </p>
+          <LandingConfigEditor />
+        </div>
       </div>
     </GlobalLayout>
   );
