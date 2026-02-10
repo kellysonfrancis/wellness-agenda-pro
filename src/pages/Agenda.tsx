@@ -1,5 +1,5 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { Calendar, ChevronLeft, ChevronRight, Filter, X, Loader2, Plus, Pencil, Trash2, Save, CalendarPlus, RefreshCw, Package, MessageSquare, Check, XCircle, Clock } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Filter, X, Loader2, Plus, Pencil, Trash2, Save, CalendarPlus, RefreshCw, Package, MessageSquare, Check, XCircle, Clock, Send } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import type { Categoria, AppointmentStatus } from "@/types/clinic";
 import { toast } from "@/hooks/use-toast";
@@ -116,6 +116,7 @@ export default function Agenda() {
   const [showMakeupModal, setShowMakeupModal] = useState(false);
   const [selectedMakeup, setSelectedMakeup] = useState<typeof makeupClasses[0] | null>(null);
   const [selectedMakeupAppt, setSelectedMakeupAppt] = useState<DBAppointment | null>(null);
+  const [sendingWa, setSendingWa] = useState<string | null>(null); // "confirmacao" | "lembrete" | null
 
   const today = new Date();
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate.toDateString()]);
@@ -331,6 +332,58 @@ export default function Agenda() {
       toast({ title: "Agendamento excluído!" });
     }
   }, [editingId, deleteAppointment]);
+
+  const handleSendWhatsApp = useCallback(async (tipo: "confirmacao" | "lembrete") => {
+    if (!editingId || !form.clientId) return;
+    setSendingWa(tipo);
+    try {
+      const client = clients.find(c => c.id === form.clientId);
+      if (!client?.telefone) {
+        toast({ title: "Cliente sem telefone cadastrado", variant: "destructive" });
+        return;
+      }
+      const svc = form.serviceId ? serviceMap[form.serviceId] : null;
+      const categoria = svc?.categoria || "pilates";
+
+      const { error } = await supabase.functions.invoke("send-whatsapp", {
+        body: {
+          tipo,
+          destinatario: client.telefone.replace(/\D/g, ""),
+          categoria,
+          dados: {
+            appointment_id: editingId,
+            cliente_nome: client.nome,
+            servico: svc?.nome || "",
+            data: form.date ? new Date(form.date + "T" + (form.startTime || "00:00")).toLocaleDateString("pt-BR") : "",
+            hora: form.startTime || "",
+            profissional: getProfessionalName(form.profissionalId),
+          },
+        },
+      });
+
+      if (error) throw error;
+      toast({ title: `${tipo === "confirmacao" ? "Confirmação" : "Lembrete"} enviado via WhatsApp!` });
+      // Refresh WA statuses
+      const { data: newLogs } = await supabase
+        .from("whatsapp_log")
+        .select("appointment_id, status, tipo")
+        .eq("appointment_id", editingId);
+      if (newLogs) {
+        setWaStatuses(prev => {
+          const updated = { ...prev };
+          for (const log of newLogs) {
+            if (log.appointment_id) updated[log.appointment_id] = log.status;
+          }
+          return updated;
+        });
+      }
+    } catch (err: any) {
+      console.error("Erro ao enviar WhatsApp:", err);
+      toast({ title: "Erro ao enviar WhatsApp", description: err.message || "Tente novamente", variant: "destructive" });
+    } finally {
+      setSendingWa(null);
+    }
+  }, [editingId, form, clients, serviceMap, getProfessionalName]);
 
   const filteredProfessionals = useMemo(() => {
     const svc = form.serviceId ? serviceMap[form.serviceId] : null;
@@ -589,6 +642,43 @@ export default function Agenda() {
                 <label className="text-sm text-muted-foreground" htmlFor="appt-obs">Observações</label>
                 <textarea id="appt-obs" value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} rows={2} maxLength={500} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none" placeholder="Observações opcionais..." />
               </div>
+
+              {editingId && (
+                <div className="border-t border-border pt-3 mt-1">
+                  <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5" /> Enviar WhatsApp
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSendWhatsApp("confirmacao")}
+                      disabled={sendingWa !== null}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-success/40 bg-success/10 text-success text-xs font-medium hover:bg-success/20 transition-colors disabled:opacity-50"
+                    >
+                      {sendingWa === "confirmacao" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      Confirmação
+                    </button>
+                    <button
+                      onClick={() => handleSendWhatsApp("lembrete")}
+                      disabled={sendingWa !== null}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-warning/40 bg-warning/10 text-warning text-xs font-medium hover:bg-warning/20 transition-colors disabled:opacity-50"
+                    >
+                      {sendingWa === "lembrete" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Clock className="h-3.5 w-3.5" />}
+                      Lembrete
+                    </button>
+                  </div>
+                  {waStatuses[editingId] && (
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <WhatsAppIndicator status={waStatuses[editingId]} />
+                      <span className="text-xs text-muted-foreground">
+                        {waStatuses[editingId] === "enviado" && "Aguardando resposta"}
+                        {waStatuses[editingId] === "confirmado_cliente" && "Cliente confirmou"}
+                        {waStatuses[editingId] === "cancelado_cliente" && "Cliente cancelou"}
+                        {waStatuses[editingId] === "erro" && "Erro no envio"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 mt-5">
