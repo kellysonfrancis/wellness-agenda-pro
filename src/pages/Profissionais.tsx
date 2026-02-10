@@ -3,6 +3,7 @@ import GlobalLayout from "@/components/layout/GlobalLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Stethoscope, Plus, Loader2, X, Pencil, Save, Trash2, Eye } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Professional {
   id: string;
@@ -186,9 +187,17 @@ export default function Profissionais() {
                       <td className="px-4 py-3 font-medium flex items-center gap-1.5">
                         {p.nome_exibicao}
                         {p.ve_todas_comissoes && (
-                          <span title="Vê todas as vendas e comissões" className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary">
-                            <Eye className="h-3 w-3" />
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary cursor-help">
+                                <Eye className="h-3 w-3" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs font-medium">Visibilidade total</p>
+                              <p className="text-xs text-muted-foreground">Este profissional pode ver todas as vendas e comissões de todos os colaboradores.</p>
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">
