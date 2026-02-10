@@ -2,7 +2,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import {
   Calendar, DollarSign, AlertCircle, TrendingUp,
-  Clock, CalendarCheck, Package, Loader2, Users, Percent, Ban
+  Clock, CalendarCheck, Package, Loader2, Users, Percent, Ban,
+  Settings2, Eye, EyeOff, GripVertical
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -96,8 +97,30 @@ function useDashboardData() {
   return { appointments, payments, clients, services, professionals, entitlements, loading, getClientName, getServiceName, getProfName };
 }
 
+const ALL_CARD_IDS = ["faturamento", "atendimentos", "ocupacao", "inadimplencia", "naoConfirmados", "totalClientes"] as const;
+type CardId = typeof ALL_CARD_IDS[number];
+
+const CARD_LABELS: Record<CardId, string> = {
+  faturamento: "Faturamento do Mês",
+  atendimentos: "Atendimentos Hoje",
+  ocupacao: "Taxa de Ocupação",
+  inadimplencia: "Inadimplência",
+  naoConfirmados: "Não Confirmados Hoje",
+  totalClientes: "Total de Clientes",
+};
+
+function loadVisibleCards(): CardId[] {
+  try {
+    const stored = localStorage.getItem("dashboard-visible-cards");
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return [...ALL_CARD_IDS];
+}
+
 function AdminDashboard({ data }: { data: ReturnType<typeof useDashboardData> }) {
   const { appointments, payments, professionals, getClientName, getServiceName, getProfName } = data;
+  const [visibleCards, setVisibleCards] = useState<CardId[]>(loadVisibleCards);
+  const [showCustomize, setShowCustomize] = useState(false);
 
   const todayAppts = useMemo(() => {
     const today = new Date().toDateString();
@@ -171,49 +194,97 @@ function AdminDashboard({ data }: { data: ReturnType<typeof useDashboardData> })
 
   const unconfirmed = useMemo(() => todayAppts.filter((a) => a.status === "reservado"), [todayAppts]);
 
+  const toggleCard = (id: CardId) => {
+    const next = visibleCards.includes(id) ? visibleCards.filter((c) => c !== id) : [...visibleCards, id];
+    setVisibleCards(next);
+    localStorage.setItem("dashboard-visible-cards", JSON.stringify(next));
+  };
+
+  const isVisible = (id: CardId) => visibleCards.includes(id);
+
+  const allCards: { id: CardId; el: JSX.Element }[] = [
+    {
+      id: "faturamento",
+      el: <StatCard key="faturamento" icon={DollarSign} label="Faturamento do Mês"
+        value={`R$ ${monthRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+        subtitle={revenueGrowth !== null ? `${revenueGrowth >= 0 ? "+" : ""}${revenueGrowth}% vs mês anterior` : "Primeiro mês"}
+        color="bg-success/10 text-success" delay={0} />,
+    },
+    {
+      id: "atendimentos",
+      el: <StatCard key="atendimentos" icon={Calendar} label="Atendimentos Hoje"
+        value={todayAppts.length}
+        subtitle={`${todayConcluidos} concluídos · ${todayPendentes} pendentes`}
+        color="bg-primary/10 text-primary" delay={60} />,
+    },
+    {
+      id: "ocupacao",
+      el: <StatCard key="ocupacao" icon={Percent} label="Taxa de Ocupação"
+        value={`${occupancyRate}%`}
+        subtitle={`${professionals.length} profissionais ativos`}
+        color="bg-info/10 text-info" delay={120} />,
+    },
+    {
+      id: "inadimplencia",
+      el: <StatCard key="inadimplencia" icon={Ban} label="Inadimplência"
+        value={inadimplencia.count}
+        subtitle={`R$ ${inadimplencia.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em aberto`}
+        color="bg-destructive/10 text-destructive" delay={180} />,
+    },
+    {
+      id: "naoConfirmados",
+      el: <StatCard key="naoConfirmados" icon={AlertCircle} label="Não Confirmados Hoje"
+        value={unconfirmed.length} color="bg-warning/10 text-warning" delay={240} />,
+    },
+    {
+      id: "totalClientes",
+      el: <StatCard key="totalClientes" icon={Users} label="Total de Clientes"
+        value={data.clients.length} color="bg-secondary text-secondary-foreground" delay={300} />,
+    },
+  ];
+
+  const shownCards = allCards.filter((c) => isVisible(c.id));
+
   return (
     <>
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          icon={DollarSign}
-          label="Faturamento do Mês"
-          value={`R$ ${monthRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-          subtitle={revenueGrowth !== null ? `${revenueGrowth >= 0 ? "+" : ""}${revenueGrowth}% vs mês anterior` : "Primeiro mês"}
-          color="bg-success/10 text-success"
-          delay={0}
-        />
-        <StatCard
-          icon={Calendar}
-          label="Atendimentos Hoje"
-          value={todayAppts.length}
-          subtitle={`${todayConcluidos} concluídos · ${todayPendentes} pendentes`}
-          color="bg-primary/10 text-primary"
-          delay={60}
-        />
-        <StatCard
-          icon={Percent}
-          label="Taxa de Ocupação"
-          value={`${occupancyRate}%`}
-          subtitle={`${professionals.length} profissionais ativos`}
-          color="bg-info/10 text-info"
-          delay={120}
-        />
-        <StatCard
-          icon={Ban}
-          label="Inadimplência"
-          value={inadimplencia.count}
-          subtitle={`R$ ${inadimplencia.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em aberto`}
-          color="bg-destructive/10 text-destructive"
-          delay={180}
-        />
+      {/* Customize toggle */}
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={() => setShowCustomize(!showCustomize)}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted"
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+          Personalizar
+        </button>
       </div>
 
-      {/* Secondary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        <StatCard icon={AlertCircle} label="Não Confirmados Hoje" value={unconfirmed.length} color="bg-warning/10 text-warning" />
-        <StatCard icon={Users} label="Total de Clientes" value={data.clients.length} color="bg-secondary text-secondary-foreground" />
-      </div>
+      {/* Customize panel */}
+      {showCustomize && (
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-4 animate-scale-in">
+          <p className="text-sm font-medium mb-3">Escolha os cards visíveis:</p>
+          <div className="flex flex-wrap gap-2">
+            {ALL_CARD_IDS.map((id) => (
+              <button
+                key={id}
+                onClick={() => toggleCard(id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  isVisible(id) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {isVisible(id) ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                {CARD_LABELS[id]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* KPI Cards */}
+      {shownCards.length > 0 && (
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${shownCards.length > 2 ? "lg:grid-cols-4" : ""} gap-4 mb-6`}>
+          {shownCards.map((c) => c.el)}
+        </div>
+      )}
 
       {/* Today's schedule */}
       <div className="bg-card rounded-xl border border-border shadow-sm">
