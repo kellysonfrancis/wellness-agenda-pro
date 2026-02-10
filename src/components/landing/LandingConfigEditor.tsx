@@ -16,6 +16,7 @@ interface LandingConfig {
   mensagem_boas_vindas: string | null;
   horario_funcionamento: string | null;
   telefone_whatsapp: string | null;
+  whatsapp_mensagem: string | null;
 }
 
 export default function LandingConfigEditor() {
@@ -93,6 +94,7 @@ export default function LandingConfigEditor() {
         mensagem_boas_vindas: config.mensagem_boas_vindas,
         horario_funcionamento: config.horario_funcionamento,
         telefone_whatsapp: config.telefone_whatsapp,
+        whatsapp_mensagem: config.whatsapp_mensagem,
       } as any)
       .eq("id", config.id);
     if (error) {
@@ -275,6 +277,11 @@ export default function LandingConfigEditor() {
         <input value={config.telefone_whatsapp || ""} onChange={(e) => setConfig({ ...config, telefone_whatsapp: e.target.value })}
           className={inputClass} maxLength={15} placeholder="5511999999999" />
         <p className="text-xs text-muted-foreground mt-1">Número com código do país, ex: 5511999999999</p>
+      </div>
+      <div>
+        <label className="text-sm text-muted-foreground flex items-center gap-1"><Type className="h-3.5 w-3.5" /> Mensagem pré-definida do WhatsApp (opcional)</label>
+        <input value={config.whatsapp_mensagem || ""} onChange={(e) => setConfig({ ...config, whatsapp_mensagem: e.target.value })}
+          className={inputClass} maxLength={200} placeholder="Olá, gostaria de agendar uma sessão!" />
       </div>
 
       {/* Link Instagram */}

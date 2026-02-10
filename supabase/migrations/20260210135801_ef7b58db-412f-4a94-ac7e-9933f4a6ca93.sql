@@ -1,0 +1,1 @@
+ALTER TABLE public.landing_config ADD COLUMN whatsapp_mensagem text DEFAULT 'Olá, gostaria de agendar uma sessão!';

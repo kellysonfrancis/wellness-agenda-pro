@@ -32,6 +32,7 @@ interface LandingConfig {
   mensagem_boas_vindas: string | null;
   horario_funcionamento: string | null;
   telefone_whatsapp: string | null;
+  whatsapp_mensagem: string | null;
 }
 
 function phoneMask(value: string) {
@@ -494,7 +495,7 @@ export default function AgendarPublico() {
       {/* WhatsApp floating button */}
       {config?.telefone_whatsapp && (
         <a
-          href={`https://wa.me/${config.telefone_whatsapp.replace(/\D/g, "")}`}
+          href={`https://wa.me/${config.telefone_whatsapp.replace(/\D/g, "")}${config.whatsapp_mensagem ? `?text=${encodeURIComponent(config.whatsapp_mensagem)}` : ""}`}
           target="_blank"
           rel="noopener noreferrer"
           className="fixed bottom-6 right-6 z-50 flex items-center justify-center h-14 w-14 rounded-full shadow-lg hover:scale-110 transition-transform"
