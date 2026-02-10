@@ -1,7 +1,7 @@
 import { useState } from "react";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { Receipt, Plus, Filter } from "lucide-react";
-import { mockExpenses } from "@/data/mockData";
+import { mockExpenses, mockBankAccounts, getAccountName } from "@/data/mockData";
 import type { Expense, ExpenseType, ExpenseCategory } from "@/types/clinic";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,6 +33,7 @@ const emptyExpense: Omit<Expense, "id" | "criadoEm"> = {
   valor: 0,
   dataVencimento: new Date().toISOString().split("T")[0],
   pago: false,
+  contaOrigemId: null,
   recorrente: false,
 };
 
@@ -161,6 +162,18 @@ export default function Despesas() {
                   />
                 </div>
               </div>
+              <div>
+                <Label>Conta de Saída</Label>
+                <Select value={form.contaOrigemId || "none"} onValueChange={(v) => setForm({ ...form, contaOrigemId: v === "none" ? null : v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma (definir depois)</SelectItem>
+                    {mockBankAccounts.filter((a) => a.ativo).map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Switch checked={form.recorrente} onCheckedChange={(v) => setForm({ ...form, recorrente: v })} />
@@ -234,6 +247,7 @@ export default function Despesas() {
                 <th className="text-left p-4 font-medium text-muted-foreground">Tipo</th>
                 <th className="text-left p-4 font-medium text-muted-foreground">Categoria</th>
                 <th className="text-left p-4 font-medium text-muted-foreground">Valor</th>
+                <th className="text-left p-4 font-medium text-muted-foreground">Conta Origem</th>
                 <th className="text-left p-4 font-medium text-muted-foreground">Vencimento</th>
                 <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
                 <th className="text-left p-4 font-medium text-muted-foreground">Ações</th>
@@ -241,7 +255,7 @@ export default function Despesas() {
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.length === 0 ? (
-                <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhuma despesa encontrada</td></tr>
+                <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Nenhuma despesa encontrada</td></tr>
               ) : filtered.map((e) => (
                 <tr key={e.id} className="hover:bg-muted/30">
                   <td className="p-4 font-medium">
@@ -257,6 +271,7 @@ export default function Despesas() {
                   </td>
                   <td className="p-4">{categoryLabels[e.categoria]}</td>
                   <td className="p-4 font-medium">R$ {e.valor.toLocaleString("pt-BR")}</td>
+                  <td className="p-4">{e.contaOrigemId ? getAccountName(e.contaOrigemId) : <span className="text-muted-foreground">—</span>}</td>
                   <td className="p-4">{new Date(e.dataVencimento).toLocaleDateString("pt-BR")}</td>
                   <td className="p-4">
                     <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${

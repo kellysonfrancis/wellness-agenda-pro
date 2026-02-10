@@ -1,6 +1,7 @@
 import type {
   Client, ProfessionalProfile, Service, ProductPlan,
-  ClientEntitlement, Appointment, Payment, User, Expense
+  ClientEntitlement, Appointment, Payment, User, Expense,
+  BankAccount, AccountTransaction
 } from "@/types/clinic";
 
 const today = new Date();
@@ -72,21 +73,38 @@ export const mockAppointments: Appointment[] = [
 ];
 
 export const mockPayments: Payment[] = [
-  { id: "pay1", clientId: "c4", appointmentId: "a4", valorTotal: 200, valorPago: 200, status: "pago", metodo: "pix", pagoEm: fmt(addDays(today, -1)), criadoEm: fmt(addDays(today, -1)) },
-  { id: "pay2", clientId: "c1", entitlementId: "e1", valorTotal: 480, valorPago: 480, status: "pago", metodo: "cartao", pagoEm: fmt(addDays(today, -15)), criadoEm: fmt(addDays(today, -15)) },
-  { id: "pay3", clientId: "c2", entitlementId: "e2", valorTotal: 1500, valorPago: 750, status: "parcial", metodo: "pix", criadoEm: fmt(addDays(today, -30)) },
+  { id: "pay1", clientId: "c4", appointmentId: "a4", contaDestinoId: "acc2", valorTotal: 200, valorPago: 200, status: "pago", metodo: "pix", pagoEm: fmt(addDays(today, -1)), criadoEm: fmt(addDays(today, -1)) },
+  { id: "pay2", clientId: "c1", entitlementId: "e1", contaDestinoId: "acc3", valorTotal: 480, valorPago: 480, status: "pago", metodo: "cartao", pagoEm: fmt(addDays(today, -15)), criadoEm: fmt(addDays(today, -15)) },
+  { id: "pay3", clientId: "c2", entitlementId: "e2", contaDestinoId: "acc2", valorTotal: 1500, valorPago: 750, status: "parcial", metodo: "pix", criadoEm: fmt(addDays(today, -30)) },
   { id: "pay4", clientId: "c6" as string, appointmentId: "a6", valorTotal: 350, valorPago: 0, status: "pendente", metodo: "pix", criadoEm: fmt(today) },
-  { id: "pay5", clientId: "c3", entitlementId: "e3", valorTotal: 1200, valorPago: 1200, status: "pago", metodo: "transferencia", pagoEm: fmt(addDays(today, -10)), criadoEm: fmt(addDays(today, -10)) },
+  { id: "pay5", clientId: "c3", entitlementId: "e3", contaDestinoId: "acc1", valorTotal: 1200, valorPago: 1200, status: "pago", metodo: "transferencia", pagoEm: fmt(addDays(today, -10)), criadoEm: fmt(addDays(today, -10)) },
 ];
 
 export const mockExpenses: Expense[] = [
-  { id: "exp1", tipo: "fixa", categoria: "aluguel", descricao: "Aluguel da clínica", valor: 5000, dataVencimento: fmt(addDays(today, 5)), pago: true, pagoEm: fmt(addDays(today, -2)), recorrente: true, criadoEm: fmt(addDays(today, -30)) },
+  { id: "exp1", tipo: "fixa", categoria: "aluguel", descricao: "Aluguel da clínica", valor: 5000, dataVencimento: fmt(addDays(today, 5)), pago: true, pagoEm: fmt(addDays(today, -2)), contaOrigemId: "acc1", recorrente: true, criadoEm: fmt(addDays(today, -30)) },
   { id: "exp2", tipo: "fixa", categoria: "salarios", descricao: "Folha de pagamento", valor: 12000, dataVencimento: fmt(addDays(today, 3)), pago: false, recorrente: true, criadoEm: fmt(addDays(today, -30)) },
   { id: "exp3", tipo: "fixa", categoria: "impostos", descricao: "SIMPLES Nacional", valor: 2800, dataVencimento: fmt(addDays(today, 10)), pago: false, recorrente: true, criadoEm: fmt(addDays(today, -30)) },
-  { id: "exp4", tipo: "variavel", categoria: "materiais", descricao: "Cremes e óleos para estética", valor: 450, dataVencimento: fmt(addDays(today, -5)), pago: true, pagoEm: fmt(addDays(today, -5)), recorrente: false, criadoEm: fmt(addDays(today, -10)) },
+  { id: "exp4", tipo: "variavel", categoria: "materiais", descricao: "Cremes e óleos para estética", valor: 450, dataVencimento: fmt(addDays(today, -5)), pago: true, pagoEm: fmt(addDays(today, -5)), contaOrigemId: "acc2", recorrente: false, criadoEm: fmt(addDays(today, -10)) },
   { id: "exp5", tipo: "variavel", categoria: "equipamentos", descricao: "Manutenção do reformer", valor: 800, dataVencimento: fmt(addDays(today, 7)), pago: false, recorrente: false, criadoEm: fmt(addDays(today, -3)) },
-  { id: "exp6", tipo: "variavel", categoria: "marketing", descricao: "Anúncios Instagram", valor: 600, dataVencimento: fmt(addDays(today, 1)), pago: true, pagoEm: fmt(today), recorrente: false, criadoEm: fmt(addDays(today, -7)) },
+  { id: "exp6", tipo: "variavel", categoria: "marketing", descricao: "Anúncios Instagram", valor: 600, dataVencimento: fmt(addDays(today, 1)), pago: true, pagoEm: fmt(today), contaOrigemId: "acc1", recorrente: false, criadoEm: fmt(addDays(today, -7)) },
   { id: "exp7", tipo: "fixa", categoria: "manutencao", descricao: "Limpeza e conservação", valor: 1200, dataVencimento: fmt(addDays(today, 15)), pago: false, recorrente: true, criadoEm: fmt(addDays(today, -30)) },
+];
+
+export const mockBankAccounts: BankAccount[] = [
+  { id: "acc1", nome: "Itaú Conta Corrente", tipo: "corrente", banco: "Itaú", saldoInicial: 15000, saldoAtual: 9400, ativo: true, criadoEm: fmt(addDays(today, -90)) },
+  { id: "acc2", nome: "Nubank PJ", tipo: "digital", banco: "Nubank", saldoInicial: 5000, saldoAtual: 5950, ativo: true, criadoEm: fmt(addDays(today, -60)) },
+  { id: "acc3", nome: "Maquininha Stone", tipo: "maquininha", banco: "Stone", saldoInicial: 0, saldoAtual: 480, ativo: true, criadoEm: fmt(addDays(today, -60)) },
+  { id: "acc4", nome: "Caixa da Recepção", tipo: "caixa", saldoInicial: 500, saldoAtual: 350, ativo: true, criadoEm: fmt(addDays(today, -90)) },
+];
+
+export const mockTransactions: AccountTransaction[] = [
+  { id: "tx1", contaDestinoId: "acc2", tipo: "entrada", valor: 200, descricao: "Pgto Pedro Almeida - PIX", paymentId: "pay1", criadoEm: fmt(addDays(today, -1)) },
+  { id: "tx2", contaDestinoId: "acc3", tipo: "entrada", valor: 480, descricao: "Pgto Maria Oliveira - Cartão", paymentId: "pay2", criadoEm: fmt(addDays(today, -15)) },
+  { id: "tx3", contaDestinoId: "acc1", tipo: "entrada", valor: 1200, descricao: "Pgto Carla Ferreira - Transferência", paymentId: "pay5", criadoEm: fmt(addDays(today, -10)) },
+  { id: "tx4", contaOrigemId: "acc1", tipo: "saida", valor: 5000, descricao: "Aluguel da clínica", expenseId: "exp1", criadoEm: fmt(addDays(today, -2)) },
+  { id: "tx5", contaOrigemId: "acc2", tipo: "saida", valor: 450, descricao: "Cremes e óleos para estética", expenseId: "exp4", criadoEm: fmt(addDays(today, -5)) },
+  { id: "tx6", contaOrigemId: "acc1", tipo: "saida", valor: 600, descricao: "Anúncios Instagram", expenseId: "exp6", criadoEm: fmt(today) },
+  { id: "tx7", contaOrigemId: "acc3", contaDestinoId: "acc1", tipo: "transferencia", valor: 480, descricao: "Transferência Stone → Itaú", criadoEm: fmt(addDays(today, -5)) },
 ];
 
 // helpers
@@ -94,3 +112,4 @@ export const getClientName = (id: string) => mockClients.find(c => c.id === id)?
 export const getServiceName = (id: string) => mockServices.find(s => s.id === id)?.nome ?? "—";
 export const getProfessionalName = (id: string) => mockProfessionals.find(p => p.id === id)?.nomeExibicao ?? "—";
 export const getPlanName = (id: string) => mockPlans.find(p => p.id === id)?.nome ?? "—";
+export const getAccountName = (id: string) => mockBankAccounts.find(a => a.id === id)?.nome ?? "—";
