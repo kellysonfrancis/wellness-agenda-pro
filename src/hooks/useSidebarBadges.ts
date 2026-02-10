@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SidebarBadges {
@@ -7,32 +7,30 @@ export interface SidebarBadges {
 
 export function useSidebarBadges() {
   const [badges, setBadges] = useState<SidebarBadges>({});
+  const [changedPaths, setChangedPaths] = useState<Set<string>>(new Set());
+  const prevRef = useRef<SidebarBadges>({});
 
-  const fetchCounts = async () => {
+  const fetchCounts = useCallback(async () => {
     const results: SidebarBadges = {};
 
-    // Lista de espera aguardando
     const { count: waitlistCount } = await supabase
       .from("waitlist")
       .select("id", { count: "exact", head: true })
       .eq("status", "aguardando");
     if (waitlistCount) results["/lista-espera"] = waitlistCount;
 
-    // Inadimplência (pagamentos pendentes)
     const { count: inadCount } = await supabase
       .from("payments")
       .select("id", { count: "exact", head: true })
       .eq("status", "pendente");
     if (inadCount) results["/inadimplencia"] = inadCount;
 
-    // Despesas não pagas
     const { count: despesasCount } = await supabase
       .from("expenses")
       .select("id", { count: "exact", head: true })
       .eq("pago", false);
     if (despesasCount) results["/despesas"] = despesasCount;
 
-    // Agendamentos de hoje pendentes de confirmação
     const today = new Date().toISOString().slice(0, 10);
     const { count: agendaCount } = await supabase
       .from("appointments")
@@ -42,14 +40,29 @@ export function useSidebarBadges() {
       .lte("inicio_em", `${today}T23:59:59`);
     if (agendaCount) results["/agenda"] = agendaCount;
 
+    // Detect which paths changed
+    const prev = prevRef.current;
+    const changed = new Set<string>();
+    const allPaths = new Set([...Object.keys(prev), ...Object.keys(results)]);
+    allPaths.forEach((p) => {
+      if ((prev[p] || 0) !== (results[p] || 0)) changed.add(p);
+    });
+
+    prevRef.current = results;
     setBadges(results);
-  };
+
+    if (changed.size > 0) {
+      setChangedPaths(changed);
+      // Clear pulse after animation duration
+      setTimeout(() => setChangedPaths(new Set()), 1500);
+    }
+  }, []);
 
   useEffect(() => {
     fetchCounts();
-    const interval = setInterval(fetchCounts, 60_000); // refresh every minute
+    const interval = setInterval(fetchCounts, 60_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchCounts]);
 
-  return badges;
+  return { badges, changedPaths };
 }

@@ -105,7 +105,7 @@ function clearInlineVars(el: HTMLElement) {
 export default function AppSidebar() {
   const { profile, roles, logout } = useAuth();
   const [open, setOpen] = useState(false);
-  const badges = useSidebarBadges();
+  const { badges, changedPaths } = useSidebarBadges();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
 
   // Read persisted sidebar settings
@@ -153,9 +153,11 @@ export default function AppSidebar() {
 
   const hasRole = (entry: NavEntry) => entry.roles.some((r) => roles.includes(r));
 
-  const Badge = ({ count }: { count?: number }) =>
+  const Badge = ({ count, path }: { count?: number; path?: string }) =>
     count ? (
-      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+      <span className={`ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground transition-transform ${
+        path && changedPaths.has(path) ? "animate-[pulse_0.6s_ease-in-out_3]" : ""
+      }`}>
         {count > 99 ? "99+" : count}
       </span>
     ) : null;
@@ -211,7 +213,7 @@ export default function AppSidebar() {
               >
                 <item.icon className="h-3.5 w-3.5 shrink-0" />
                 <span className="text-[13px]">{item.label}</span>
-                <Badge count={badges[item.path]} />
+                <Badge count={badges[item.path]} path={item.path} />
               </RouterNavLink>
             ))}
           </div>
@@ -249,7 +251,7 @@ export default function AppSidebar() {
             >
               <entry.icon className="h-4 w-4 shrink-0" />
               <span>{entry.label}</span>
-              <Badge count={badges[entry.path]} />
+              <Badge count={badges[entry.path]} path={entry.path} />
             </RouterNavLink>
           )
         )}
