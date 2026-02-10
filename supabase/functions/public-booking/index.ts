@@ -7,26 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-interface CategorySchedule {
-  categoria: string;
-  dias_semana: number[];
-  hora_inicio: number;
-  hora_fim: number;
-}
-
-function validateSchedule(startDate: Date, schedule: CategorySchedule | null): { valid: boolean; message?: string } {
-  if (!schedule) return { valid: true };
-  const dow = startDate.getDay();
-  if (!schedule.dias_semana.includes(dow)) {
-    return { valid: false, message: "Esta categoria não atende neste dia da semana" };
-  }
-  const hour = startDate.getHours();
-  if (hour < schedule.hora_inicio || hour >= schedule.hora_fim) {
-    return { valid: false, message: `Horário fora do permitido (${schedule.hora_inicio}h - ${schedule.hora_fim}h)` };
-  }
-  return { valid: true };
-}
-
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -67,37 +47,15 @@ serve(async (req: Request) => {
         });
       }
 
-      // Get service details and category schedule in parallel
-      const [svcRes, schedRes] = await Promise.all([
-        client.from("services").select("duracao_min, max_alunos, categoria").eq("id", serviceId).single(),
-        client.from("category_schedules").select("categoria, dias_semana, hora_inicio, hora_fim"),
-      ]);
-
-      const svc = svcRes.data;
+      // Get service duration
+      const { data: svc } = await client.from("services").select("duracao_min, max_alunos").eq("id", serviceId).single();
       if (!svc) {
         return new Response(JSON.stringify({ error: "Serviço não encontrado" }), {
           status: 404, headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
 
-      // Build schedule for this category
-      const catSchedule: CategorySchedule | null = (schedRes.data ?? []).find(
-        (s: any) => s.categoria === svc.categoria
-      ) as CategorySchedule | null ?? null;
-
       const maxAlunos = svc.max_alunos ?? 1;
-
-      // Check if this day of week is allowed
-      const dateObj = new Date(date + "T12:00:00");
-      const dow = dateObj.getDay();
-      if (catSchedule && !catSchedule.dias_semana.includes(dow)) {
-        return new Response(JSON.stringify({ slots: [], duracao_min: svc.duracao_min }), {
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        });
-      }
-
-      const horaInicio = catSchedule?.hora_inicio ?? 8;
-      const horaFim = catSchedule?.hora_fim ?? 20;
 
       // Get existing appointments for that professional on that date
       const dayStart = `${date}T00:00:00`;
@@ -111,6 +69,7 @@ serve(async (req: Request) => {
         .lte("inicio_em", dayEnd)
         .not("status", "in", '("cancelado","faltou")');
 
+      // Count how many appointments exist per slot for the same service (for group classes)
       const slotCounts: Record<string, number> = {};
       (existing ?? []).forEach((a: any) => {
         if (a.service_id === serviceId) {
@@ -119,16 +78,18 @@ serve(async (req: Request) => {
         }
       });
 
+      // Generate available slots (8:00 to 20:00)
       const slots: string[] = [];
       const duration = svc.duracao_min;
 
-      for (let h = horaInicio; h < horaFim; h++) {
+      for (let h = 8; h < 20; h++) {
         for (let m = 0; m < 60; m += 30) {
           const slotStart = `${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
           const slotEnd = new Date(new Date(slotStart).getTime() + duration * 60000).toISOString();
 
+          // Check if professional has any conflicting appointment (different service)
           const hasConflict = (existing ?? []).some((a: any) => {
-            if (a.service_id === serviceId) return false;
+            if (a.service_id === serviceId) return false; // same service handled by capacity
             const aStart = new Date(a.inicio_em).getTime();
             const aEnd = new Date(a.fim_em).getTime();
             const sStart = new Date(slotStart).getTime();
@@ -138,6 +99,7 @@ serve(async (req: Request) => {
 
           if (hasConflict) continue;
 
+          // Check capacity for group classes
           const count = slotCounts[slotStart] || 0;
           if (count >= maxAlunos) continue;
 
@@ -176,30 +138,15 @@ serve(async (req: Request) => {
         });
       }
 
-      // Get service details and category schedule
-      const [svcRes, schedRes] = await Promise.all([
-        client.from("services").select("duracao_min, categoria").eq("id", service_id).single(),
-        client.from("category_schedules").select("categoria, dias_semana, hora_inicio, hora_fim"),
-      ]);
-
-      const svc = svcRes.data;
+      // Get service duration
+      const { data: svc } = await client.from("services").select("duracao_min").eq("id", service_id).single();
       if (!svc) {
         return new Response(JSON.stringify({ error: "Serviço não encontrado" }), {
           status: 404, headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
 
-      // Validate category schedule
-      const catSchedule = (schedRes.data ?? []).find((s: any) => s.categoria === svc.categoria) as CategorySchedule | null ?? null;
-      const startDate = new Date(inicio_em);
-      const schedCheck = validateSchedule(startDate, catSchedule);
-      if (!schedCheck.valid) {
-        return new Response(JSON.stringify({ error: schedCheck.message }), {
-          status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
-        });
-      }
-
-      const fimEm = new Date(startDate.getTime() + svc.duracao_min * 60000).toISOString();
+      const fimEm = new Date(new Date(inicio_em).getTime() + svc.duracao_min * 60000).toISOString();
 
       // Find or create client
       let clientId: string;

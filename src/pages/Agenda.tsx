@@ -5,7 +5,6 @@ import type { Categoria, AppointmentStatus } from "@/types/clinic";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgendaData, type DBService, type DBAppointment } from "@/hooks/useAgendaData";
-import { validateSchedule } from "@/utils/scheduleValidation";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import PilatesMonthlyWizard from "@/components/agenda/PilatesMonthlyWizard";
 import PackageScheduler from "@/components/agenda/PackageScheduler";
@@ -273,13 +272,6 @@ export default function Agenda() {
     const startDate = new Date(`${form.date}T${form.startTime}:00`);
     const endDate = new Date(startDate.getTime() + svc.duracao_min * 60000);
 
-    // Validate category schedule
-    const schedCheck = validateSchedule(startDate, svc.categoria, scheduleMap);
-    if (!schedCheck.valid) {
-      toast({ title: "Horário não permitido", description: schedCheck.message, variant: "destructive" });
-      return;
-    }
-
     if (editingId) {
       const oldAppt = appointments.find((a) => a.id === editingId);
       const result = await updateAppointment(editingId, {
@@ -362,7 +354,7 @@ export default function Agenda() {
         toast({ title: "Agendamento criado!", description: `${getClientName(form.clientId)} — ${svc.nome}` });
       }
     }
-  }, [form, serviceMap, editingId, createAppointment, updateAppointment, getClientName, scheduleMap]);
+  }, [form, serviceMap, editingId, createAppointment, updateAppointment, getClientName]);
 
   const handleDelete = useCallback(async () => {
     if (!editingId) return;
@@ -812,7 +804,6 @@ export default function Agenda() {
         professionals={professionals}
         existingAppointments={appointments}
         originalAppointment={selectedMakeupAppt}
-        categorySchedules={scheduleMap}
         onScheduled={() => { refetch(); refetchEntitlements(); }}
       />
     </GlobalLayout>
