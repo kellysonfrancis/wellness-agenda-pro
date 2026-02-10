@@ -80,6 +80,7 @@ export default function VendaRapida() {
   const [valorVenda, setValorVenda] = useState("");
   const [showQuickClient, setShowQuickClient] = useState(false);
   const [clientOpen, setClientOpen] = useState(false);
+  const [sellerOpen, setSellerOpen] = useState(false);
 
   // Set default seller on load
   useEffect(() => {
@@ -157,20 +158,30 @@ export default function VendaRapida() {
           <div>
             <label className="text-sm font-medium mb-1.5 block">Vendedor</label>
             {isAdmin ? (
-              <Select value={sellerId} onValueChange={(v) => {
-                setSellerId(v);
-                const found = allSellers.find((s) => s.id === v);
-                if (found) setSellerType(found.type);
-              }}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {allSellers.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name} <span className="text-muted-foreground text-xs ml-1">({s.type === "profissional" ? "Prof." : "Recep."})</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={sellerOpen} onOpenChange={setSellerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={sellerOpen} className="w-full justify-between font-normal">
+                    {sellerId ? allSellers.find((s) => s.id === sellerId)?.name ?? "Selecione" : "Selecione"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Buscar vendedor..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum vendedor encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        {allSellers.map((s) => (
+                          <CommandItem key={s.id} value={s.name} onSelect={() => { setSellerId(s.id); setSellerType(s.type); setSellerOpen(false); }}>
+                            <Check className={cn("mr-2 h-4 w-4", sellerId === s.id ? "opacity-100" : "opacity-0")} />
+                            {s.name} <span className="text-muted-foreground text-xs ml-1">({s.type === "profissional" ? "Prof." : "Recep."})</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             ) : (
               <Input value={profile?.nome || ""} disabled className="bg-muted" />
             )}
