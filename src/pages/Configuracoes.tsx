@@ -1,5 +1,5 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2 } from "lucide-react";
+import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -15,6 +15,14 @@ interface WaLine {
   receiptEnabled: boolean;
   configured: boolean;
   isNew?: boolean;
+  // validation state
+  validationStatus?: "idle" | "validating" | "valid" | "invalid";
+  validationMsg?: string;
+  phoneDisplay?: string;
+  // test state
+  testStatus?: "idle" | "sending" | "sent" | "error";
+  testMsg?: string;
+  testPhone?: string;
 }
 
 const CATEGORIAS = [
@@ -34,6 +42,9 @@ const newLine = (): WaLine => ({
   receiptEnabled: true,
   configured: false,
   isNew: true,
+  validationStatus: "idle",
+  testStatus: "idle",
+  testPhone: "",
 });
 
 export default function Configuracoes() {
@@ -63,6 +74,9 @@ export default function Configuracoes() {
         confirmEnabled: row.confirm_enabled,
         receiptEnabled: row.receipt_enabled,
         configured: true,
+        validationStatus: "idle" as const,
+        testStatus: "idle" as const,
+        testPhone: "",
       })));
     }
     setLoadingLines(false);
@@ -88,6 +102,62 @@ export default function Configuracoes() {
       const has = l.categorias.includes(cat);
       return { ...l, categorias: has ? l.categorias.filter(c => c !== cat) : [...l.categorias, cat] };
     }));
+  };
+
+  const handleValidate = async (line: WaLine) => {
+    if (!line.token.trim() || !line.phoneId.trim()) {
+      toast.error("Preencha o Token e o Phone Number ID para validar");
+      return;
+    }
+    updateLine(line.id, { validationStatus: "validating", validationMsg: "" });
+    try {
+      const { data, error } = await supabase.functions.invoke("save-whatsapp-config", {
+        body: { action: "validate", access_token: line.token, phone_number_id: line.phoneId },
+      });
+      if (error) throw error;
+      if (data.valid) {
+        updateLine(line.id, {
+          validationStatus: "valid",
+          validationMsg: data.verified_name ? `✓ ${data.verified_name} (${data.phone_display})` : `✓ Número ${data.phone_display}`,
+          phoneDisplay: data.phone_display,
+        });
+        toast.success("Credenciais válidas!");
+      } else {
+        updateLine(line.id, { validationStatus: "invalid", validationMsg: data.error || "Credenciais inválidas" });
+        toast.error("Credenciais inválidas");
+      }
+    } catch (err: any) {
+      updateLine(line.id, { validationStatus: "invalid", validationMsg: err.message || "Erro na validação" });
+      toast.error("Erro ao validar credenciais");
+    }
+  };
+
+  const handleTest = async (line: WaLine) => {
+    if (!line.token.trim() || !line.phoneId.trim()) {
+      toast.error("Preencha o Token e o Phone Number ID");
+      return;
+    }
+    if (!line.testPhone?.trim()) {
+      toast.error("Informe o número de teste (com DDD e código do país)");
+      return;
+    }
+    updateLine(line.id, { testStatus: "sending", testMsg: "" });
+    try {
+      const { data, error } = await supabase.functions.invoke("save-whatsapp-config", {
+        body: { action: "test", access_token: line.token, phone_number_id: line.phoneId, test_phone: line.testPhone },
+      });
+      if (error) throw error;
+      if (data.sent) {
+        updateLine(line.id, { testStatus: "sent", testMsg: "Mensagem de teste enviada com sucesso!" });
+        toast.success("Mensagem de teste enviada!");
+      } else {
+        updateLine(line.id, { testStatus: "error", testMsg: data.error || "Erro ao enviar" });
+        toast.error(data.error || "Erro ao enviar teste");
+      }
+    } catch (err: any) {
+      updateLine(line.id, { testStatus: "error", testMsg: err.message || "Erro ao enviar teste" });
+      toast.error("Erro ao enviar mensagem de teste");
+    }
   };
 
   const handleSave = async (line: WaLine) => {
@@ -118,7 +188,7 @@ export default function Configuracoes() {
         },
       });
       if (error) throw error;
-      updateLine(line.id, { configured: true, token: "", phoneId: "", isNew: false });
+      updateLine(line.id, { configured: true, token: "", phoneId: "", isNew: false, validationStatus: "idle", testStatus: "idle" });
       toast.success(`Linha "${line.label}" salva com sucesso!`);
     } catch (err: any) {
       toast.error("Erro ao salvar: " + (err.message || "tente novamente"));
@@ -234,17 +304,88 @@ export default function Configuracoes() {
 
               <div>
                 <label className="text-sm text-muted-foreground">Access Token (permanente)</label>
-                <input type="password" value={line.token} onChange={e => updateLine(line.id, { token: e.target.value })}
+                <input type="password" value={line.token} onChange={e => updateLine(line.id, { token: e.target.value, validationStatus: "idle", testStatus: "idle" })}
                   placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "Cole aqui o token"}
                   className={inputClass} />
               </div>
 
               <div>
                 <label className="text-sm text-muted-foreground">Phone Number ID</label>
-                <input type="text" value={line.phoneId} onChange={e => updateLine(line.id, { phoneId: e.target.value })}
+                <input type="text" value={line.phoneId} onChange={e => updateLine(line.id, { phoneId: e.target.value, validationStatus: "idle", testStatus: "idle" })}
                   placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "ID do número"}
                   className={inputClass} />
               </div>
+
+              {/* Validation & Test Section */}
+              {(line.token.trim() && line.phoneId.trim()) && (
+                <div className="border border-border rounded-lg p-3 space-y-3 bg-background">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Verificação de credenciais</p>
+
+                  {/* Validate button */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleValidate(line)}
+                      disabled={line.validationStatus === "validating"}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/40 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors disabled:opacity-50"
+                    >
+                      {line.validationStatus === "validating" ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                      )}
+                      Validar credenciais
+                    </button>
+                    {line.validationStatus === "valid" && (
+                      <span className="flex items-center gap-1 text-xs text-success">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> {line.validationMsg}
+                      </span>
+                    )}
+                    {line.validationStatus === "invalid" && (
+                      <span className="flex items-center gap-1 text-xs text-destructive">
+                        <XCircle className="h-3.5 w-3.5" /> {line.validationMsg}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Test message */}
+                  {line.validationStatus === "valid" && (
+                    <div className="space-y-2 pt-1 border-t border-border">
+                      <p className="text-xs text-muted-foreground pt-2">Enviar mensagem de teste (opcional)</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={line.testPhone || ""}
+                          onChange={e => updateLine(line.id, { testPhone: e.target.value, testStatus: "idle" })}
+                          placeholder="5511999999999"
+                          className="flex-1 rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+                        />
+                        <button
+                          onClick={() => handleTest(line)}
+                          disabled={line.testStatus === "sending"}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-success/40 bg-success/10 text-success text-xs font-medium hover:bg-success/20 transition-colors disabled:opacity-50"
+                        >
+                          {line.testStatus === "sending" ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Send className="h-3.5 w-3.5" />
+                          )}
+                          Enviar teste
+                        </button>
+                      </div>
+                      {line.testStatus === "sent" && (
+                        <p className="text-xs text-success flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> {line.testMsg}
+                        </p>
+                      )}
+                      {line.testStatus === "error" && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <XCircle className="h-3 w-3" /> {line.testMsg}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2 pt-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Mensagens</p>
@@ -276,6 +417,7 @@ export default function Configuracoes() {
               <li>Crie ou selecione um app com produto "WhatsApp"</li>
               <li>Em API Setup, copie o <strong>Access Token</strong> permanente</li>
               <li>Copie o <strong>Phone Number ID</strong> do número verificado</li>
+              <li>Use os botões acima para <strong>validar</strong> e <strong>testar</strong> antes de salvar</li>
             </ol>
           </div>
         </div>

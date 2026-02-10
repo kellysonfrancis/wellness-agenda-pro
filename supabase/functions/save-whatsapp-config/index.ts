@@ -37,8 +37,78 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { line_id, label, categorias, access_token, phone_number_id, reminder_enabled, confirm_enabled, receipt_enabled } = body;
+    const { action, line_id, label, categorias, access_token, phone_number_id, reminder_enabled, confirm_enabled, receipt_enabled, test_phone } = body;
 
+    // ── Validate / Test credentials ──
+    if (action === "validate" || action === "test") {
+      if (!access_token || !phone_number_id) {
+        return new Response(JSON.stringify({ error: "Token e Phone Number ID são obrigatórios" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Step 1: validate credentials by calling the Meta API to get phone number info
+      const validateRes = await fetch(
+        `https://graph.facebook.com/v21.0/${phone_number_id}`,
+        { headers: { Authorization: `Bearer ${access_token}` } }
+      );
+      const validateData = await validateRes.json();
+
+      if (!validateRes.ok) {
+        const msg = validateData?.error?.message || "Credenciais inválidas";
+        return new Response(JSON.stringify({ valid: false, error: msg }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const phoneDisplay = validateData.display_phone_number || validateData.verified_name || phone_number_id;
+
+      if (action === "validate") {
+        return new Response(JSON.stringify({ valid: true, phone_display: phoneDisplay, verified_name: validateData.verified_name || "" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Step 2: action === "test" — send a test message
+      if (!test_phone) {
+        return new Response(JSON.stringify({ error: "Informe o número de teste" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const testRes = await fetch(
+        `https://graph.facebook.com/v21.0/${phone_number_id}/messages`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: test_phone.replace(/\D/g, ""),
+            type: "text",
+            text: { body: "✅ Teste de conexão WhatsApp realizado com sucesso! — Clínica Gestão Integrada" },
+          }),
+        }
+      );
+      const testData = await testRes.json();
+
+      if (!testRes.ok) {
+        return new Response(JSON.stringify({ sent: false, error: testData?.error?.message || "Erro ao enviar mensagem de teste" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ sent: true, message_id: testData.messages?.[0]?.id }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Save config ──
     if (!access_token || !phone_number_id || !label) {
       return new Response(JSON.stringify({ error: "Token, Phone Number ID e nome da linha são obrigatórios" }), {
         status: 400,
