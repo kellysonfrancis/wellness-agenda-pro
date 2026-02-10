@@ -1,9 +1,9 @@
 import { useState } from "react";
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { BarChart3, TrendingUp, Users, PieChart } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Users, PieChart, Receipt } from "lucide-react";
 import {
   BarChart, Bar, PieChart as RPie, Pie, Cell,
-  FunnelChart, Funnel, LabelList,
+  FunnelChart, Funnel, LabelList, ComposedChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
 import BIFilters, { type PeriodFilter, type CategoryFilter } from "@/components/bi/BIFilters";
@@ -14,8 +14,12 @@ export default function BI() {
   const [period, setPeriod] = useState<PeriodFilter>("all");
   const [category, setCategory] = useState<CategoryFilter>("all");
 
-  const { revenue, catRev, payStatus, funnel, ltv, totalRevenue, avgTicket, activeClients } =
-    useBIData(period, category);
+  const {
+    revenue, catRev, payStatus, funnel, ltv,
+    totalRevenue, avgTicket, activeClients,
+    totalExpenses, totalFixedExpenses, totalVariableExpenses,
+    profit, profitMargin, revenueVsExpenses, expenseByCategory,
+  } = useBIData(period, category);
 
   return (
     <GlobalLayout>
@@ -29,8 +33,8 @@ export default function BI() {
         <BIFilters period={period} category={category} onPeriodChange={setPeriod} onCategoryChange={setCategory} />
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      {/* KPIs - Revenue */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
         <div className="stat-card flex items-start gap-4">
           <div className="p-2.5 rounded-lg bg-primary/10 text-primary"><TrendingUp className="h-5 w-5" /></div>
           <div>
@@ -54,20 +58,75 @@ export default function BI() {
         </div>
       </div>
 
+      {/* KPIs - Expenses & Profit */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+        <div className="stat-card flex items-start gap-4">
+          <div className="p-2.5 rounded-lg bg-destructive/10 text-destructive"><Receipt className="h-5 w-5" /></div>
+          <div>
+            <p className="text-sm text-muted-foreground">Despesas Totais</p>
+            <p className="text-2xl font-bold mt-0.5">R$ {totalExpenses.toLocaleString("pt-BR")}</p>
+          </div>
+        </div>
+        <div className="stat-card">
+          <p className="text-sm text-muted-foreground">Fixas</p>
+          <p className="text-lg font-bold mt-1">R$ {totalFixedExpenses.toLocaleString("pt-BR")}</p>
+        </div>
+        <div className="stat-card">
+          <p className="text-sm text-muted-foreground">Variáveis</p>
+          <p className="text-lg font-bold mt-1">R$ {totalVariableExpenses.toLocaleString("pt-BR")}</p>
+        </div>
+        <div className="stat-card flex items-start gap-4">
+          <div className={`p-2.5 rounded-lg ${profit >= 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+            {profit >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Lucro / Margem</p>
+            <p className={`text-2xl font-bold mt-0.5 ${profit >= 0 ? "text-success" : "text-destructive"}`}>
+              R$ {profit.toLocaleString("pt-BR")}
+            </p>
+            <p className={`text-xs font-medium ${profit >= 0 ? "text-success" : "text-destructive"}`}>
+              {profitMargin.toFixed(1)}% margem
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Charts grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartCard title="Faturamento Mensal" icon={TrendingUp}>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={revenue}>
+        {/* Revenue vs Expenses */}
+        <ChartCard title="Receita × Despesas (Mensal)" icon={TrendingUp}>
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={revenueVsExpenses}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(170 15% 88%)" />
               <XAxis dataKey="mes" tick={{ fontSize: 12 }} stroke="hsl(200 10% 45%)" />
               <YAxis tick={{ fontSize: 12 }} stroke="hsl(200 10% 45%)" />
               <Tooltip formatter={(v: number) => `R$ ${v.toLocaleString("pt-BR")}`} />
-              <Bar dataKey="receita" fill="hsl(172 66% 30%)" radius={[6, 6, 0, 0]} />
-            </BarChart>
+              <Legend />
+              <Bar dataKey="receita" name="Receita" fill="hsl(172 66% 30%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="despesas" name="Despesas" fill="hsl(0 72% 51%)" radius={[4, 4, 0, 0]} />
+              <Line type="monotone" dataKey="lucro" name="Lucro" stroke="hsl(205 80% 50%)" strokeWidth={2} dot={{ r: 3 }} />
+            </ComposedChart>
           </ResponsiveContainer>
         </ChartCard>
 
+        {/* Expense by category */}
+        <ChartCard title="Despesas por Categoria" icon={Receipt}>
+          <ResponsiveContainer width="100%" height={280}>
+            <RPie>
+              <Pie data={expenseByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3}
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              >
+                {expenseByCategory.map((_, i) => (
+                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v: number) => `R$ ${v.toLocaleString("pt-BR")}`} />
+              <Legend />
+            </RPie>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        {/* Revenue by category */}
         <ChartCard title="Receita por Categoria" icon={PieChart}>
           <ResponsiveContainer width="100%" height={260}>
             <RPie>
@@ -81,6 +140,7 @@ export default function BI() {
           </ResponsiveContainer>
         </ChartCard>
 
+        {/* Funnel */}
         <ChartCard title="Funil de Conversão" icon={Users}>
           <ResponsiveContainer width="100%" height={260}>
             <FunnelChart>
@@ -93,6 +153,7 @@ export default function BI() {
           </ResponsiveContainer>
         </ChartCard>
 
+        {/* Payment status */}
         <ChartCard title="Status de Pagamentos" icon={BarChart3}>
           <ResponsiveContainer width="100%" height={260}>
             <RPie>
