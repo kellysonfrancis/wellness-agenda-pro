@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DollarSign, TrendingUp, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ContasBancarias from "@/components/financeiro/ContasBancarias";
+import ReceiptButton from "@/components/financeiro/ReceiptGenerator";
 import { useToast } from "@/hooks/use-toast";
 
 interface DBPayment {
@@ -110,7 +111,10 @@ export default function Financeiro() {
                           <td className="p-4">R$ {Number(p.valor_pago).toLocaleString("pt-BR")}</td>
                           <td className="p-4 capitalize">{p.metodo}</td>
                           <td className="p-4"><span className="text-xs px-2.5 py-1 rounded-full bg-warning/10 text-warning font-medium">{p.status}</span></td>
-                          <td className="p-4"><button onClick={() => handleBaixar(p)} className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90">Baixar</button></td>
+                          <td className="p-4 flex gap-2">
+                            <button onClick={() => handleBaixar(p)} className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90">Baixar</button>
+                            <ReceiptButton payment={p} />
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -129,10 +133,11 @@ export default function Financeiro() {
                       <th className="text-left p-4 font-medium text-muted-foreground">Método</th>
                       <th className="text-left p-4 font-medium text-muted-foreground">Conta Destino</th>
                       <th className="text-left p-4 font-medium text-muted-foreground">Data</th>
+                      <th className="text-left p-4 font-medium text-muted-foreground">Recibo</th>
                     </tr></thead>
                     <tbody className="divide-y divide-border">
                       {pagos.length === 0 ? (
-                        <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhum pagamento registrado</td></tr>
+                        <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhum pagamento registrado</td></tr>
                       ) : pagos.map(p => (
                         <tr key={p.id} className="hover:bg-muted/30">
                           <td className="p-4">{p.client?.nome || "—"}</td>
@@ -140,6 +145,7 @@ export default function Financeiro() {
                           <td className="p-4 capitalize">{p.metodo}</td>
                           <td className="p-4">{p.bank_account?.nome || <span className="text-muted-foreground">—</span>}</td>
                           <td className="p-4">{p.pago_em ? new Date(p.pago_em).toLocaleDateString("pt-BR") : "—"}</td>
+                          <td className="p-4"><ReceiptButton payment={p} /></td>
                         </tr>
                       ))}
                     </tbody>
