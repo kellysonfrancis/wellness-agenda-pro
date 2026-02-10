@@ -464,6 +464,7 @@ export type Database = {
           mensagem_boas_vindas: string | null
           nome_clinica: string
           subtitulo: string | null
+          telefone_whatsapp: string | null
           updated_at: string
         }
         Insert: {
@@ -479,6 +480,7 @@ export type Database = {
           mensagem_boas_vindas?: string | null
           nome_clinica?: string
           subtitulo?: string | null
+          telefone_whatsapp?: string | null
           updated_at?: string
         }
         Update: {
@@ -494,6 +496,7 @@ export type Database = {
           mensagem_boas_vindas?: string | null
           nome_clinica?: string
           subtitulo?: string | null
+          telefone_whatsapp?: string | null
           updated_at?: string
         }
         Relationships: []

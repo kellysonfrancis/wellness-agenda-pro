@@ -1,0 +1,1 @@
+ALTER TABLE public.landing_config ADD COLUMN telefone_whatsapp text DEFAULT NULL;

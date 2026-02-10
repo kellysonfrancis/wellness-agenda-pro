@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Save, Loader2, Palette, Link2, Image, Type, Copy, Check } from "lucide-react";
+import { Upload, Save, Loader2, Palette, Link2, Image, Type, Copy, Check, Phone } from "lucide-react";
 
 interface LandingConfig {
   id: string;
@@ -15,6 +15,7 @@ interface LandingConfig {
   link_instagram: string | null;
   mensagem_boas_vindas: string | null;
   horario_funcionamento: string | null;
+  telefone_whatsapp: string | null;
 }
 
 export default function LandingConfigEditor() {
@@ -91,6 +92,7 @@ export default function LandingConfigEditor() {
         link_instagram: config.link_instagram,
         mensagem_boas_vindas: config.mensagem_boas_vindas,
         horario_funcionamento: config.horario_funcionamento,
+        telefone_whatsapp: config.telefone_whatsapp,
       } as any)
       .eq("id", config.id);
     if (error) {
@@ -265,6 +267,14 @@ export default function LandingConfigEditor() {
         <label className="text-sm text-muted-foreground flex items-center gap-1"><Type className="h-3.5 w-3.5" /> Horário de funcionamento (opcional)</label>
         <input value={config.horario_funcionamento || ""} onChange={(e) => setConfig({ ...config, horario_funcionamento: e.target.value })}
           className={inputClass} maxLength={150} placeholder="Seg a Sex: 7h às 20h · Sáb: 8h às 13h" />
+      </div>
+
+      {/* WhatsApp */}
+      <div>
+        <label className="text-sm text-muted-foreground flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> WhatsApp para botão flutuante (opcional)</label>
+        <input value={config.telefone_whatsapp || ""} onChange={(e) => setConfig({ ...config, telefone_whatsapp: e.target.value })}
+          className={inputClass} maxLength={15} placeholder="5511999999999" />
+        <p className="text-xs text-muted-foreground mt-1">Número com código do país, ex: 5511999999999</p>
       </div>
 
       {/* Link Instagram */}
