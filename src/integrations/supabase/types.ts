@@ -315,6 +315,30 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_rates: {
+        Row: {
+          categoria: string
+          created_at: string
+          id: string
+          percentual: number
+          updated_at: string
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          id?: string
+          percentual?: number
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          id?: string
+          percentual?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           categoria: Database["public"]["Enums"]["expense_category"]
@@ -633,6 +657,79 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      sales: {
+        Row: {
+          categoria: string
+          client_id: string
+          created_at: string
+          entitlement_id: string | null
+          id: string
+          pago: boolean
+          pago_em: string | null
+          payment_id: string | null
+          percentual_comissao: number
+          seller_id: string
+          seller_type: string
+          updated_at: string
+          valor_comissao: number
+          valor_venda: number
+        }
+        Insert: {
+          categoria: string
+          client_id: string
+          created_at?: string
+          entitlement_id?: string | null
+          id?: string
+          pago?: boolean
+          pago_em?: string | null
+          payment_id?: string | null
+          percentual_comissao?: number
+          seller_id: string
+          seller_type: string
+          updated_at?: string
+          valor_comissao?: number
+          valor_venda?: number
+        }
+        Update: {
+          categoria?: string
+          client_id?: string
+          created_at?: string
+          entitlement_id?: string | null
+          id?: string
+          pago?: boolean
+          pago_em?: string | null
+          payment_id?: string | null
+          percentual_comissao?: number
+          seller_id?: string
+          seller_type?: string
+          updated_at?: string
+          valor_comissao?: number
+          valor_venda?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_entitlement_id_fkey"
+            columns: ["entitlement_id"]
+            isOneToOne: false
+            referencedRelation: "client_entitlements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       services: {
         Row: {
