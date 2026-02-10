@@ -138,12 +138,31 @@ serve(async (req: Request) => {
         });
       }
 
-      // Get service duration
-      const { data: svc } = await client.from("services").select("duracao_min").eq("id", service_id).single();
+      // Get service duration and category
+      const { data: svc } = await client.from("services").select("duracao_min, categoria").eq("id", service_id).single();
       if (!svc) {
         return new Response(JSON.stringify({ error: "Serviço não encontrado" }), {
           status: 404, headers: { "Content-Type": "application/json", ...corsHeaders },
         });
+      }
+
+      // Validate against category schedule
+      const { data: schedules } = await client.from("category_schedules").select("dias_semana, hora_inicio, hora_fim").eq("categoria", svc.categoria);
+      if (schedules && schedules.length > 0) {
+        const schedule = schedules[0];
+        const startDate = new Date(inicio_em);
+        const dayOfWeek = startDate.getUTCDay();
+        const hour = startDate.getUTCHours() + startDate.getUTCMinutes() / 60;
+        if (!schedule.dias_semana.includes(dayOfWeek)) {
+          return new Response(JSON.stringify({ error: "Dia da semana não permitido para esta categoria" }), {
+            status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
+          });
+        }
+        if (hour < schedule.hora_inicio || hour >= schedule.hora_fim) {
+          return new Response(JSON.stringify({ error: `Horário fora da janela permitida (${schedule.hora_inicio}h - ${schedule.hora_fim}h)` }), {
+            status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
+          });
+        }
       }
 
       const fimEm = new Date(new Date(inicio_em).getTime() + svc.duracao_min * 60000).toISOString();

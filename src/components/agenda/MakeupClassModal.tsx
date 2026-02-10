@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { X, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { validateAppointmentSchedule } from "@/lib/scheduleValidation";
 
 interface Props {
   open: boolean;
@@ -74,6 +75,14 @@ export default function MakeupClassModal({
     const [y, mo, d] = date.split("-").map(Number);
     const start = new Date(y, mo - 1, d, h, m);
     const end = new Date(start.getTime() + duration * 60000);
+
+    // Validate against category schedule
+    const scheduleError = await validateAppointmentSchedule("pilates", start);
+    if (scheduleError) {
+      toast({ title: "Horário inválido", description: scheduleError, variant: "destructive" });
+      setSaving(false);
+      return;
+    }
 
     // Create makeup appointment
     const { data: appt, error: apptError } = await supabase
