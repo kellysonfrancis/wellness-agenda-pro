@@ -3,6 +3,25 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { LogIn, UserPlus, Loader2 } from "lucide-react";
 
+const inputClass = "mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30";
+
+function cpfMask(value: string) {
+  return value
+    .replace(/\D/g, "")
+    .slice(0, 11)
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+function phoneMask(value: string) {
+  return value
+    .replace(/\D/g, "")
+    .slice(0, 11)
+    .replace(/(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d)/, "$1-$2");
+}
+
 export default function Login() {
   const { login, signup, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -10,6 +29,10 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
+  const [endereco, setEndereco] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -21,7 +44,24 @@ export default function Login() {
     setSubmitting(true);
 
     if (isSignup) {
-      const { error: err } = await signup(email, password, nome);
+      if (cpf.replace(/\D/g, "").length !== 11) {
+        setError("CPF deve ter 11 dígitos");
+        setSubmitting(false);
+        return;
+      }
+      if (whatsapp.replace(/\D/g, "").length < 10) {
+        setError("WhatsApp deve ter pelo menos 10 dígitos");
+        setSubmitting(false);
+        return;
+      }
+
+      const { error: err } = await signup(email, password, nome, {
+        cpf: cpf.replace(/\D/g, ""),
+        whatsapp: whatsapp.replace(/\D/g, ""),
+        data_nascimento: dataNascimento || undefined as any,
+        endereco: endereco || undefined as any,
+        role: "cliente",
+      });
       if (err) {
         setError(err);
       } else {
@@ -65,66 +105,55 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignup && (
-              <div>
-                <label className="text-sm text-muted-foreground" htmlFor="nome">Nome</label>
-                <input
-                  id="nome"
-                  type="text"
-                  required
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-                  placeholder="Seu nome completo"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="text-sm text-muted-foreground" htmlFor="nome">Nome completo *</label>
+                  <input id="nome" type="text" required value={nome} onChange={(e) => setNome(e.target.value)}
+                    className={inputClass} placeholder="Seu nome completo" maxLength={100} />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground" htmlFor="cpf">CPF *</label>
+                  <input id="cpf" type="text" required value={cpf} onChange={(e) => setCpf(cpfMask(e.target.value))}
+                    className={inputClass} placeholder="000.000.000-00" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground" htmlFor="whatsapp">WhatsApp *</label>
+                  <input id="whatsapp" type="text" required value={whatsapp} onChange={(e) => setWhatsapp(phoneMask(e.target.value))}
+                    className={inputClass} placeholder="(00) 00000-0000" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground" htmlFor="data_nascimento">Data de Nascimento</label>
+                  <input id="data_nascimento" type="date" value={dataNascimento} onChange={(e) => setDataNascimento(e.target.value)}
+                    className={inputClass} />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground" htmlFor="endereco">Endereço</label>
+                  <input id="endereco" type="text" value={endereco} onChange={(e) => setEndereco(e.target.value)}
+                    className={inputClass} placeholder="Rua, número, bairro, cidade" maxLength={255} />
+                </div>
+              </>
             )}
             <div>
-              <label className="text-sm text-muted-foreground" htmlFor="email">E-mail</label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-                placeholder="seu@email.com"
-              />
+              <label className="text-sm text-muted-foreground" htmlFor="email">E-mail *</label>
+              <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                className={inputClass} placeholder="seu@email.com" />
             </div>
             <div>
-              <label className="text-sm text-muted-foreground" htmlFor="password">Senha</label>
-              <input
-                id="password"
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-                placeholder="Mínimo 6 caracteres"
-              />
+              <label className="text-sm text-muted-foreground" htmlFor="password">Senha *</label>
+              <input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
+                className={inputClass} placeholder="Mínimo 6 caracteres" />
             </div>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {submitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : isSignup ? (
-                <UserPlus className="h-4 w-4" />
-              ) : (
-                <LogIn className="h-4 w-4" />
-              )}
+            <button type="submit" disabled={submitting}
+              className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : isSignup ? <UserPlus className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
               {isSignup ? "Criar Conta" : "Entrar"}
             </button>
           </form>
 
           <p className="text-sm text-muted-foreground text-center mt-4">
             {isSignup ? "Já tem conta?" : "Não tem conta?"}{" "}
-            <button
-              onClick={() => { setIsSignup(!isSignup); setError(null); setSuccess(null); }}
-              className="text-primary font-medium hover:underline"
-            >
+            <button onClick={() => { setIsSignup(!isSignup); setError(null); setSuccess(null); }}
+              className="text-primary font-medium hover:underline">
               {isSignup ? "Entrar" : "Criar conta"}
             </button>
           </p>

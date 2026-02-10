@@ -691,34 +691,46 @@ export type Database = {
       }
       profiles: {
         Row: {
+          cpf: string | null
           created_at: string
+          data_nascimento: string | null
           email: string | null
+          endereco: string | null
           id: string
           nome: string
           telefone: string | null
           updated_at: string
           user_id: string
           ve_todas_vendas: boolean
+          whatsapp: string | null
         }
         Insert: {
+          cpf?: string | null
           created_at?: string
+          data_nascimento?: string | null
           email?: string | null
+          endereco?: string | null
           id?: string
           nome?: string
           telefone?: string | null
           updated_at?: string
           user_id: string
           ve_todas_vendas?: boolean
+          whatsapp?: string | null
         }
         Update: {
+          cpf?: string | null
           created_at?: string
+          data_nascimento?: string | null
           email?: string | null
+          endereco?: string | null
           id?: string
           nome?: string
           telefone?: string | null
           updated_at?: string
           user_id?: string
           ve_todas_vendas?: boolean
+          whatsapp?: string | null
         }
         Relationships: []
       }
