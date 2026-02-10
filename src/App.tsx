@@ -24,6 +24,7 @@ import ClientPackages from "./pages/ClientPackages";
 import Comissoes from "./pages/Comissoes";
 import VendaRapida from "./pages/VendaRapida";
 import Inadimplencia from "./pages/Inadimplencia";
+import TaxaOcupacao from "./pages/TaxaOcupacao";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/profissionais" element={<ProtectedRoute roles={["admin"]}><Profissionais /></ProtectedRoute>} />
             <Route path="/comissoes" element={<ProtectedRoute roles={["admin"]}><Comissoes /></ProtectedRoute>} />
             <Route path="/inadimplencia" element={<ProtectedRoute roles={["admin"]}><Inadimplencia /></ProtectedRoute>} />
+            <Route path="/taxa-ocupacao" element={<ProtectedRoute roles={["admin"]}><TaxaOcupacao /></ProtectedRoute>} />
             <Route path="/agendar" element={<ProtectedRoute roles={["cliente"]}><ClientBooking /></ProtectedRoute>} />
             <Route path="/meus-agendamentos" element={<ProtectedRoute roles={["cliente"]}><ClientAppointments /></ProtectedRoute>} />
             <Route path="/meus-pacotes" element={<ProtectedRoute roles={["cliente"]}><ClientPackages /></ProtectedRoute>} />
