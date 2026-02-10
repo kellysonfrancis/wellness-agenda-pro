@@ -150,9 +150,9 @@ export default function AppSidebar() {
   if (!profile) return null;
   const filtered = navItems.filter(i => i.roles.some(r => roles.includes(r)));
   const linkClass = (isActive: boolean) => `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"}`;
-  const sidebar = <div className="flex flex-col h-full w-64 p-4 bg-[#eb94eb]">
+  const sidebar = <div className="flex flex-col h-full w-64 p-4 text-[#e0e0e0] bg-[#c17699]">
       <div className="mb-6 px-3">
-        <h2 className="text-lg font-bold text-sidebar-primary">Clínica</h2>
+        <h2 className="text-lg bg-[#f0d6ec] text-[#c17699] font-mono text-center font-extrabold">Clínica</h2>
         <p className="text-xs text-sidebar-foreground/60 mt-0.5">Gestão Integrada</p>
       </div>
 

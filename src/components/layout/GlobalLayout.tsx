@@ -14,7 +14,7 @@ export default function GlobalLayout({
   if (!user) return <Navigate to="/login" replace />;
   return <div className="flex min-h-screen w-full bg-background">
       <AppSidebar />
-      <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8 md:ml-0 bg-neutral-100">
+      <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8 md:ml-0 bg-[#f0d6ec]">
         <div className="max-w-7xl mx-auto animate-fade-in">
           <div className="flex justify-end mb-4">
             <RealtimeNotifications />
