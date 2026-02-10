@@ -483,9 +483,9 @@ export type Database = {
       landing_config: {
         Row: {
           banner_url: string | null
-          cor_fundo: string | null
-          cor_primaria: string | null
-          cor_texto: string | null
+          cor_fundo: string
+          cor_primaria: string
+          cor_texto: string
           created_at: string
           horario_funcionamento: string | null
           id: string
@@ -500,9 +500,9 @@ export type Database = {
         }
         Insert: {
           banner_url?: string | null
-          cor_fundo?: string | null
-          cor_primaria?: string | null
-          cor_texto?: string | null
+          cor_fundo?: string
+          cor_primaria?: string
+          cor_texto?: string
           created_at?: string
           horario_funcionamento?: string | null
           id?: string
@@ -517,9 +517,9 @@ export type Database = {
         }
         Update: {
           banner_url?: string | null
-          cor_fundo?: string | null
-          cor_primaria?: string | null
-          cor_texto?: string | null
+          cor_fundo?: string
+          cor_primaria?: string
+          cor_texto?: string
           created_at?: string
           horario_funcionamento?: string | null
           id?: string
