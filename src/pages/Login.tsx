@@ -5,6 +5,18 @@ import { LogIn, UserPlus, Loader2 } from "lucide-react";
 
 const inputClass = "mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30";
 
+function validarCPF(cpf: string): boolean {
+  const digits = cpf.replace(/\D/g, "");
+  if (digits.length !== 11 || /^(\d)\1{10}$/.test(digits)) return false;
+  for (let t = 9; t < 11; t++) {
+    let sum = 0;
+    for (let i = 0; i < t; i++) sum += Number(digits[i]) * (t + 1 - i);
+    const rest = (sum * 10) % 11;
+    if ((rest === 10 ? 0 : rest) !== Number(digits[t])) return false;
+  }
+  return true;
+}
+
 function cpfMask(value: string) {
   return value
     .replace(/\D/g, "")
@@ -44,8 +56,8 @@ export default function Login() {
     setSubmitting(true);
 
     if (isSignup) {
-      if (cpf.replace(/\D/g, "").length !== 11) {
-        setError("CPF deve ter 11 dígitos");
+      if (!validarCPF(cpf)) {
+        setError("CPF inválido. Verifique os dígitos.");
         setSubmitting(false);
         return;
       }
