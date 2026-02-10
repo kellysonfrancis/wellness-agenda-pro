@@ -11,11 +11,24 @@ import PackageScheduler from "@/components/agenda/PackageScheduler";
 import MakeupClassModal from "@/components/agenda/MakeupClassModal";
 import { useQuery } from "@tanstack/react-query";
 
+interface Pausa {
+  inicio: number;
+  fim: number;
+}
+
 interface CategorySchedule {
   categoria: string;
   dias_semana: number[];
   hora_inicio: number;
   hora_fim: number;
+  pausas: Pausa[];
+}
+
+interface Holiday {
+  id: string;
+  data: string;
+  descricao: string;
+  recorrente: boolean;
 }
 
 const statusBorderColors: Record<AppointmentStatus, string> = {
@@ -114,9 +127,23 @@ export default function Agenda() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("category_schedules")
-        .select("categoria, dias_semana, hora_inicio, hora_fim");
+        .select("categoria, dias_semana, hora_inicio, hora_fim, pausas");
       if (error) throw error;
-      return (data || []) as CategorySchedule[];
+      return (data || []).map((row: any) => ({
+        ...row,
+        pausas: Array.isArray(row.pausas) ? row.pausas : [],
+      })) as CategorySchedule[];
+    },
+  });
+
+  const { data: holidays = [] } = useQuery<Holiday[]>({
+    queryKey: ["holidays"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("holidays")
+        .select("id, data, descricao, recorrente");
+      if (error) throw error;
+      return (data || []) as Holiday[];
     },
   });
 
@@ -147,13 +174,37 @@ export default function Agenda() {
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate.toDateString()]);
   const viewDays = viewMode === "week" ? weekDays : [currentDate];
 
-  // Check if an hour is within schedule for the filtered category
+  // Check if a date is a holiday
+  const isHoliday = useCallback((day: Date) => {
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+    const monthDay = dateStr.slice(5); // MM-DD for recurring
+    return holidays.some((h) => {
+      if (h.recorrente) {
+        return h.data.slice(5) === monthDay;
+      }
+      return h.data === dateStr;
+    });
+  }, [holidays]);
+
+  const getHolidayName = useCallback((day: Date) => {
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+    const monthDay = dateStr.slice(5);
+    const h = holidays.find((h) => h.recorrente ? h.data.slice(5) === monthDay : h.data === dateStr);
+    return h?.descricao || "Feriado";
+  }, [holidays]);
+
+  // Check if an hour is within schedule for the filtered category (including breaks)
   const isHourInSchedule = useCallback((hour: number, dayOfWeek: number) => {
     if (!filterCategoria) return true;
     const sched = scheduleMap[filterCategoria];
     if (!sched) return true;
     if (!sched.dias_semana.includes(dayOfWeek)) return false;
-    return hour >= sched.hora_inicio && hour < sched.hora_fim;
+    if (hour < sched.hora_inicio || hour >= sched.hora_fim) return false;
+    // Check breaks
+    for (const pausa of sched.pausas || []) {
+      if (hour >= pausa.inicio && hour < pausa.fim) return false;
+    }
+    return true;
   }, [filterCategoria, scheduleMap]);
 
   // WhatsApp confirmation statuses per appointment
@@ -271,6 +322,33 @@ export default function Agenda() {
 
     const startDate = new Date(`${form.date}T${form.startTime}:00`);
     const endDate = new Date(startDate.getTime() + svc.duracao_min * 60000);
+
+    // Validate: block holidays
+    if (isHoliday(startDate)) {
+      toast({ title: "Data bloqueada", description: `${getHolidayName(startDate)} — não é possível agendar em feriados`, variant: "destructive" });
+      return;
+    }
+
+    // Validate: block breaks and off-schedule hours
+    const catSched = scheduleMap[svc.categoria];
+    if (catSched) {
+      const dayOfWeek = startDate.getDay();
+      if (!catSched.dias_semana.includes(dayOfWeek)) {
+        toast({ title: "Dia não permitido", description: "Esta categoria não atende neste dia da semana", variant: "destructive" });
+        return;
+      }
+      const hour = startDate.getHours();
+      if (hour < catSched.hora_inicio || hour >= catSched.hora_fim) {
+        toast({ title: "Horário fora do expediente", description: `Permitido: ${catSched.hora_inicio}h – ${catSched.hora_fim}h`, variant: "destructive" });
+        return;
+      }
+      for (const pausa of catSched.pausas || []) {
+        if (hour >= pausa.inicio && hour < pausa.fim) {
+          toast({ title: "Horário de pausa", description: `Pausa configurada: ${pausa.inicio}h – ${pausa.fim}h`, variant: "destructive" });
+          return;
+        }
+      }
+    }
 
     if (editingId) {
       const oldAppt = appointments.find((a) => a.id === editingId);
@@ -512,16 +590,20 @@ export default function Agenda() {
               <div className="p-2" />
               {viewDays.map((day) => {
                 const { weekday, day: dayNum, isToday: isTodayDay } = formatDayHeader(day, isSameDay(day, today));
+                const dayIsHoliday = isHoliday(day);
                 return (
                   <div
                     key={day.toISOString()}
-                    className={`p-2 text-center border-l border-border cursor-pointer hover:bg-muted/40 transition-colors ${isTodayDay ? "bg-primary/5" : ""}`}
+                    className={`p-2 text-center border-l border-border cursor-pointer hover:bg-muted/40 transition-colors ${isTodayDay ? "bg-primary/5" : ""} ${dayIsHoliday ? "bg-destructive/5" : ""}`}
                     onClick={() => { setCurrentDate(day); setViewMode("day"); }}
                   >
-                    <p className={`text-xs font-medium ${isTodayDay ? "text-primary" : "text-muted-foreground"}`}>{weekday}</p>
+                    <p className={`text-xs font-medium ${isTodayDay ? "text-primary" : dayIsHoliday ? "text-destructive" : "text-muted-foreground"}`}>{weekday}</p>
                     <p className={`text-lg font-bold mt-0.5 ${isTodayDay ? "bg-primary text-primary-foreground w-8 h-8 rounded-full flex items-center justify-center mx-auto" : "text-foreground"}`}>
                       {dayNum}
                     </p>
+                    {dayIsHoliday && (
+                      <p className="text-[10px] text-destructive font-medium truncate">{getHolidayName(day)}</p>
+                    )}
                   </div>
                 );
               })}
@@ -537,12 +619,21 @@ export default function Agenda() {
                   {viewDays.map((day) => {
                     const events = getEventsForDayHour(day, hour);
                     const isCurrentDay = isSameDay(day, today);
-                    const inSchedule = isHourInSchedule(hour, day.getDay());
+                    const dayIsHoliday = isHoliday(day);
+                    const inSchedule = !dayIsHoliday && isHourInSchedule(hour, day.getDay());
+                    const isBreak = !dayIsHoliday && !inSchedule && filterCategoria;
                     return (
                       <div
                         key={day.toISOString() + hour}
-                        className={`border-l border-border/50 p-0.5 min-h-[64px] transition-colors ${inSchedule ? "cursor-pointer hover:bg-muted/20" : "bg-muted/40 cursor-not-allowed opacity-50"} ${isCurrentDay && inSchedule ? "bg-primary/[0.02]" : ""}`}
+                        className={`border-l border-border/50 p-0.5 min-h-[64px] transition-colors ${
+                          dayIsHoliday
+                            ? "bg-destructive/10 cursor-not-allowed"
+                            : inSchedule
+                              ? "cursor-pointer hover:bg-muted/20"
+                              : "bg-muted/40 cursor-not-allowed opacity-50"
+                        } ${isCurrentDay && inSchedule ? "bg-primary/[0.02]" : ""}`}
                         onClick={() => inSchedule && openNewModal(day, hour)}
+                        title={dayIsHoliday ? getHolidayName(day) : isBreak ? "Horário de pausa" : undefined}
                       >
                         {events.map((evt) => {
                           const start = new Date(evt.inicio_em);
