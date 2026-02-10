@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from "recharts";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,6 +181,26 @@ export default function Comissoes() {
     return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [professionals, profiles]);
 
+  // Monthly chart data from filtered sales
+  const monthlyData = useMemo(() => {
+    const map = new Map<string, { vendas: number; comissoes: number; pagas: number }>();
+    filteredSales.forEach((s) => {
+      const d = new Date(s.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const cur = map.get(key) || { vendas: 0, comissoes: 0, pagas: 0 };
+      cur.vendas += Number(s.valor_venda);
+      cur.comissoes += Number(s.valor_comissao);
+      if (s.pago) cur.pagas += Number(s.valor_comissao);
+      map.set(key, cur);
+    });
+    return Array.from(map, ([mes, v]) => ({
+      mes: new Date(mes + "-01").toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }),
+      Vendas: v.vendas,
+      Comissões: v.comissoes,
+      Pagas: v.pagas,
+    })).sort((a, b) => a.mes.localeCompare(b.mes));
+  }, [filteredSales]);
+
   const fmt = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const buildRows = () =>
@@ -331,6 +352,30 @@ export default function Comissoes() {
           </div>
         </div>
       </div>
+
+      {/* Monthly Chart */}
+      {monthlyData.length > 0 && (
+        <div className="bg-card rounded-xl border border-border shadow-sm p-5 mb-6">
+          <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+            <TrendingUp className="h-4 w-4 text-primary" /> Comissões por Mês
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={monthlyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="mes" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+              <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+              <RechartsTooltip
+                formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, undefined]}
+                contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
+              />
+              <Legend />
+              <Bar dataKey="Vendas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Comissões" fill="hsl(var(--primary) / 0.5)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Pagas" fill="hsl(var(--success, 142 71% 45%))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-card rounded-xl border border-border shadow-sm p-4 mb-6">
