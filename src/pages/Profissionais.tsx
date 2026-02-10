@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Stethoscope, Plus, Loader2, X, Pencil, Save, Trash2 } from "lucide-react";
+import { Stethoscope, Plus, Loader2, X, Pencil, Save, Trash2, Eye } from "lucide-react";
 
 interface Professional {
   id: string;
@@ -183,7 +183,14 @@ export default function Profissionais() {
                   const linkedProfile = p.user_id ? profiles.find((pr) => pr.user_id === p.user_id) : null;
                   return (
                     <tr key={p.id} className="hover:bg-muted/40 transition-colors">
-                      <td className="px-4 py-3 font-medium">{p.nome_exibicao}</td>
+                      <td className="px-4 py-3 font-medium flex items-center gap-1.5">
+                        {p.nome_exibicao}
+                        {p.ve_todas_comissoes && (
+                          <span title="Vê todas as vendas e comissões" className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary">
+                            <Eye className="h-3 w-3" />
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">
                         {linkedProfile ? `${linkedProfile.nome} (${linkedProfile.email})` : "—"}
                       </td>
