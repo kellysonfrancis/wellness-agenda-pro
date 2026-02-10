@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Palette, Sparkles, Moon, Sun, RotateCcw } from "lucide-react";
 
 /* ── Sidebar theme presets ── */
@@ -31,32 +31,52 @@ const PALETTE_TOKENS: PaletteToken[] = [
   { key: "info", label: "Info", cssVar: "--info" },
 ];
 
-function parseHslString(val: string): { h: number; s: number; l: number } {
-  const parts = val.trim().split(/[\s]+/);
-  return {
-    h: parseInt(parts[0]) || 0,
-    s: parseInt(parts[1]) || 0,
-    l: parseInt(parts[2]) || 0,
-  };
-}
-
 function getComputedHsl(cssVar: string): { h: number; s: number; l: number } {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
-  return parseHslString(raw);
+  const parts = raw.split(/[\s]+/);
+  return { h: parseInt(parts[0]) || 0, s: parseInt(parts[1]) || 0, l: parseInt(parts[2]) || 0 };
+}
+
+/* ── Color conversion helpers ── */
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l: Math.round(l * 100) };
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else h = ((r - g) / d + 4) / 6;
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const s1 = s / 100, l1 = l / 100;
+  const a = s1 * Math.min(l1, 1 - l1);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l1 - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
 }
 
 /* ── Sidebar helpers ── */
 function applyHslTheme(el: HTMLElement, h: number, s: number, l: number) {
   const bgL = Math.min(l, 18);
   const vars: Record<string, string> = {
-    "--sidebar": `${h} ${Math.round(s * 0.5)}% ${bgL}%`,
-    "--sidebar-background": `${h} ${Math.round(s * 0.5)}% ${bgL}%`,
+    "--sidebar": `${h} ${s}% ${bgL}%`,
+    "--sidebar-background": `${h} ${s}% ${bgL}%`,
     "--sidebar-foreground": "0 0% 92%",
-    "--sidebar-primary": `${h} ${s}% ${Math.max(l, 50)}%`,
+    "--sidebar-primary": `${h} ${Math.min(s + 20, 100)}% ${Math.max(l, 50)}%`,
     "--sidebar-primary-foreground": "0 0% 100%",
-    "--sidebar-accent": `${h} ${Math.round(s * 0.4)}% 22%`,
+    "--sidebar-accent": `${h} ${Math.round(s * 0.8)}% 22%`,
     "--sidebar-accent-foreground": "0 0% 98%",
-    "--sidebar-border": `${h} ${Math.round(s * 0.3)}% 20%`,
+    "--sidebar-border": `${h} ${Math.round(s * 0.6)}% 20%`,
     "--sidebar-ring": `${h} ${s}% ${Math.max(l, 50)}%`,
   };
   Object.entries(vars).forEach(([k, v]) => el.style.setProperty(k, v));
@@ -196,32 +216,28 @@ export default function ThemeCustomizer() {
           </span>
         </div>
 
-        {/* Custom HSL sliders */}
+        {/* Custom color picker */}
         {sidebarTheme === "custom" && (
           <div className="bg-muted/30 rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">HSL Personalizado</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Escolha a cor</span>
               <div className="h-6 w-6 rounded-full border border-border" style={{ backgroundColor: `hsl(${customHsl.h} ${customHsl.s}% ${customHsl.l}%)` }} />
             </div>
-            {([
-              { key: "h", label: "Matiz", min: 0, max: 360, suffix: "°" },
-              { key: "s", label: "Saturação", min: 0, max: 100, suffix: "%" },
-              { key: "l", label: "Luminosidade", min: 0, max: 100, suffix: "%" },
-            ] as const).map(({ key, label, min, max, suffix }) => (
-              <div key={key} className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-20">{label}</span>
-                <input
-                  type="range" min={min} max={max} value={customHsl[key]}
-                  onChange={(e) => {
-                    const next = { ...customHsl, [key]: Number(e.target.value) };
-                    setCustomHsl(next);
-                    localStorage.setItem("sidebar-custom-hsl", JSON.stringify(next));
-                  }}
-                  className={inputClass}
-                />
-                <span className="text-xs text-muted-foreground w-10 text-right">{customHsl[key]}{suffix}</span>
-              </div>
-            ))}
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={hslToHex(customHsl.h, customHsl.s, customHsl.l)}
+                onChange={(e) => {
+                  const next = hexToHsl(e.target.value);
+                  setCustomHsl(next);
+                  localStorage.setItem("sidebar-custom-hsl", JSON.stringify(next));
+                }}
+                className="h-10 w-16 rounded-lg border border-border cursor-pointer bg-transparent"
+              />
+              <span className="text-xs text-muted-foreground">
+                Clique para escolher qualquer cor
+              </span>
+            </div>
           </div>
         )}
 
@@ -304,8 +320,18 @@ export default function ThemeCustomizer() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium">{token.label}</span>
                   <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={hslToHex(val.h, val.s, val.l)}
+                      onChange={(e) => {
+                        const hsl = hexToHsl(e.target.value);
+                        updatePalette(token.key, "h", hsl.h);
+                        updatePalette(token.key, "s", hsl.s);
+                        updatePalette(token.key, "l", hsl.l);
+                      }}
+                      className="h-6 w-8 rounded border border-border cursor-pointer bg-transparent"
+                    />
                     <span className="text-[10px] text-muted-foreground font-mono">{val.h} {val.s}% {val.l}%</span>
-                    <div className="h-5 w-5 rounded border border-border" style={{ backgroundColor: `hsl(${val.h} ${val.s}% ${val.l}%)` }} />
                   </div>
                 </div>
                 <div className="space-y-1.5">
