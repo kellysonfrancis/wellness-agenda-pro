@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { ShoppingCart, Check } from "lucide-react";
+import { ShoppingCart, Check, UserPlus } from "lucide-react";
+import QuickClientModal from "@/components/venda/QuickClientModal";
 
 const catLabel: Record<string, string> = { pilates: "Pilates", fisioterapia: "Fisioterapia", estetica: "Estética" };
 
@@ -74,6 +75,7 @@ export default function VendaRapida() {
   const [clientId, setClientId] = useState("");
   const [categoria, setCategoria] = useState("pilates");
   const [valorVenda, setValorVenda] = useState("");
+  const [showQuickClient, setShowQuickClient] = useState(false);
 
   // Set default seller on load
   useEffect(() => {
@@ -172,7 +174,12 @@ export default function VendaRapida() {
 
           {/* Client */}
           <div>
-            <label className="text-sm font-medium mb-1.5 block">Cliente</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-medium">Cliente</label>
+              <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1" onClick={() => setShowQuickClient(true)}>
+                <UserPlus className="h-3.5 w-3.5" /> Novo
+              </Button>
+            </div>
             <Select value={clientId} onValueChange={setClientId}>
               <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
               <SelectContent>
@@ -279,6 +286,7 @@ export default function VendaRapida() {
           </TableBody>
         </Table>
       </div>
+      <QuickClientModal open={showQuickClient} onOpenChange={setShowQuickClient} onCreated={(id) => setClientId(id)} />
     </GlobalLayout>
   );
 }
