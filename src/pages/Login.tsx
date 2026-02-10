@@ -45,6 +45,7 @@ export default function Login() {
   const [whatsapp, setWhatsapp] = useState("");
   const [dataNascimento, setDataNascimento] = useState("");
   const [endereco, setEndereco] = useState("");
+  const [tipoConta, setTipoConta] = useState<"cliente" | "funcionario">("cliente");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -72,12 +73,16 @@ export default function Login() {
         whatsapp: whatsapp.replace(/\D/g, ""),
         data_nascimento: dataNascimento || undefined as any,
         endereco: endereco || undefined as any,
-        role: "cliente",
+        role: tipoConta === "cliente" ? "cliente" : "funcionario_pendente",
       });
       if (err) {
         setError(err);
       } else {
-        setSuccess("Conta criada! Verifique seu e-mail para confirmar o cadastro.");
+        setSuccess(
+          tipoConta === "funcionario"
+            ? "Conta criada! Aguarde a validação de um administrador para acessar o sistema. Verifique seu e-mail para confirmar o cadastro."
+            : "Conta criada! Verifique seu e-mail para confirmar o cadastro."
+        );
         setIsSignup(false);
       }
     } else {
@@ -118,6 +123,26 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignup && (
               <>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-2 block">Tipo de conta *</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="tipoConta" value="cliente" checked={tipoConta === "cliente"}
+                        onChange={() => setTipoConta("cliente")} className="accent-primary" />
+                      <span className="text-sm">Cliente</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="tipoConta" value="funcionario" checked={tipoConta === "funcionario"}
+                        onChange={() => setTipoConta("funcionario")} className="accent-primary" />
+                      <span className="text-sm">Funcionário</span>
+                    </label>
+                  </div>
+                  {tipoConta === "funcionario" && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ⚠ Contas de funcionário precisam ser validadas por um administrador.
+                    </p>
+                  )}
+                </div>
                 <div>
                   <label className="text-sm text-muted-foreground" htmlFor="nome">Nome completo *</label>
                   <input id="nome" type="text" required value={nome} onChange={(e) => setNome(e.target.value)}
