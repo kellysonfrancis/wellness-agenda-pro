@@ -27,7 +27,7 @@ function periodCutoff(period: PeriodFilter): string | null {
 
 async function fetchBIRawData() {
   const [apptRes, payRes, clientRes, expRes, svcRes, planRes, entRes, bankRes, txRes] = await Promise.all([
-    supabase.from("appointments").select("id, client_id, service_id, inicio_em, status"),
+    supabase.from("appointments").select("id, client_id, service_id, profissional_id, inicio_em, status"),
     supabase.from("payments").select("id, client_id, appointment_id, valor_pago, valor_total, status, created_at, metodo"),
     supabase.from("clients").select("id, nome, created_at"),
     supabase.from("expenses").select("id, descricao, valor, tipo, categoria, created_at"),
@@ -51,7 +51,7 @@ async function fetchBIRawData() {
   };
 }
 
-export function useBIData(period: PeriodFilter, category: CategoryFilter) {
+export function useBIData(period: PeriodFilter, category: CategoryFilter, professionalId = "all") {
   const { data: raw, isLoading, error } = useQuery({
     queryKey: ["bi-data"],
     queryFn: fetchBIRawData,
@@ -72,6 +72,7 @@ export function useBIData(period: PeriodFilter, category: CategoryFilter) {
     let filteredAppts = appointments;
     if (cutoff) filteredAppts = filteredAppts.filter((a) => a.inicio_em >= cutoff);
     if (category !== "all") filteredAppts = filteredAppts.filter((a) => getServiceCategory(a.service_id) === category);
+    if (professionalId !== "all") filteredAppts = filteredAppts.filter((a) => a.profissional_id === professionalId);
 
     // Filter payments
     let filteredPayments = payments;
@@ -210,7 +211,7 @@ export function useBIData(period: PeriodFilter, category: CategoryFilter) {
       totalExpenses, totalFixedExpenses, totalVariableExpenses, profit, profitMargin,
       revenueVsExpenses, expenseByCategory, cashFlowByAccount, accountBalances,
     };
-  }, [raw, period, category]);
+  }, [raw, period, category, professionalId]);
 
   return { data: computed, isLoading, error };
 }
