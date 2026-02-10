@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { mockBankAccounts, mockTransactions, getAccountName } from "@/data/mockData";
 import type { BankAccount, BankAccountType, AccountTransaction } from "@/types/clinic";
-import { Building2, Wallet, Smartphone, CreditCard, Plus, ArrowRightLeft, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { Building2, Wallet, Smartphone, CreditCard, Plus, ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Pencil, Power } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,9 +35,14 @@ export default function ContasBancarias() {
   const [transactions, setTransactions] = useState<AccountTransaction[]>(mockTransactions);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const [newAccount, setNewAccount] = useState({
     nome: "", tipo: "corrente" as BankAccountType, banco: "", saldoInicial: 0,
+  });
+  const [editForm, setEditForm] = useState({
+    nome: "", tipo: "corrente" as BankAccountType, banco: "",
   });
   const [transfer, setTransfer] = useState({
     origemId: "", destinoId: "", valor: 0, descricao: "",
@@ -63,6 +69,36 @@ export default function ContasBancarias() {
     setNewAccount({ nome: "", tipo: "corrente", banco: "", saldoInicial: 0 });
     setDialogOpen(false);
     toast({ title: "Conta adicionada com sucesso!" });
+  };
+
+  const handleOpenEdit = (account: BankAccount) => {
+    setEditingAccount(account);
+    setEditForm({ nome: account.nome, tipo: account.tipo, banco: account.banco || "" });
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingAccount || !editForm.nome.trim()) {
+      toast({ title: "Preencha o nome da conta", variant: "destructive" });
+      return;
+    }
+    setAccounts((prev) =>
+      prev.map((a) =>
+        a.id === editingAccount.id
+          ? { ...a, nome: editForm.nome, tipo: editForm.tipo, banco: editForm.banco || null }
+          : a
+      )
+    );
+    setEditOpen(false);
+    setEditingAccount(null);
+    toast({ title: "Conta atualizada!" });
+  };
+
+  const handleToggleActive = (account: BankAccount) => {
+    setAccounts((prev) =>
+      prev.map((a) => (a.id === account.id ? { ...a, ativo: !a.ativo } : a))
+    );
+    toast({ title: account.ativo ? "Conta desativada" : "Conta reativada" });
   };
 
   const handleTransfer = () => {
@@ -205,19 +241,43 @@ export default function ContasBancarias() {
         </div>
       </div>
 
-      {/* Account cards */}
+      {/* Account cards - Active */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {accounts.filter((a) => a.ativo).map((account) => {
           const Icon = typeIcons[account.tipo];
           return (
             <div key={account.id} className="stat-card">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                  <Icon className="h-5 w-5" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{account.nome}</p>
+                    <p className="text-xs text-muted-foreground">{typeLabels[account.tipo]}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{account.nome}</p>
-                  <p className="text-xs text-muted-foreground">{typeLabels[account.tipo]}</p>
+                <div className="flex gap-1">
+                  <button onClick={() => handleOpenEdit(account)} className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Editar">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive" title="Desativar">
+                        <Power className="h-3.5 w-3.5" />
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Desativar "{account.nome}"?</AlertDialogTitle>
+                        <AlertDialogDescription>A conta não aparecerá mais nas opções de pagamento e transferência. Você pode reativá-la depois.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleToggleActive(account)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Desativar</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
               <p className="text-2xl font-bold">R$ {account.saldoAtual.toLocaleString("pt-BR")}</p>
@@ -226,6 +286,37 @@ export default function ContasBancarias() {
           );
         })}
       </div>
+
+      {/* Inactive accounts */}
+      {accounts.some((a) => !a.ativo) && (
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Contas Desativadas</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {accounts.filter((a) => !a.ativo).map((account) => {
+              const Icon = typeIcons[account.tipo];
+              return (
+                <div key={account.id} className="stat-card opacity-60">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2 rounded-lg bg-muted text-muted-foreground">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{account.nome}</p>
+                        <p className="text-xs text-muted-foreground">{typeLabels[account.tipo]} · Inativa</p>
+                      </div>
+                    </div>
+                    <button onClick={() => handleToggleActive(account)} className="text-xs px-2.5 py-1 rounded-md border border-border hover:bg-muted transition-colors" title="Reativar">
+                      Reativar
+                    </button>
+                  </div>
+                  <p className="text-xl font-bold text-muted-foreground">R$ {account.saldoAtual.toLocaleString("pt-BR")}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Transactions */}
       <div className="bg-card rounded-xl border border-border shadow-sm">
@@ -278,6 +369,38 @@ export default function ContasBancarias() {
           </table>
         </div>
       </div>
+      {/* Edit dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Editar Conta</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <Label>Nome da Conta</Label>
+              <Input value={editForm.nome} onChange={(e) => setEditForm({ ...editForm, nome: e.target.value })} maxLength={100} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Tipo</Label>
+                <Select value={editForm.tipo} onValueChange={(v) => setEditForm({ ...editForm, tipo: v as BankAccountType })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(typeLabels).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Banco (opcional)</Label>
+                <Input value={editForm.banco} onChange={(e) => setEditForm({ ...editForm, banco: e.target.value })} maxLength={50} />
+              </div>
+            </div>
+            <button onClick={handleSaveEdit} className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+              Salvar Alterações
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
