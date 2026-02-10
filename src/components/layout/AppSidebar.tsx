@@ -153,7 +153,7 @@ export default function AppSidebar() {
   const sidebar = <div className="flex flex-col h-full w-64 p-4 text-[#e0e0e0] bg-[#c17699]">
       <div className="mb-6 px-3">
         <h2 className="text-lg bg-[#f0d6ec] text-[#c17699] font-mono text-center font-extrabold">Clínica</h2>
-        <p className="text-xs text-sidebar-foreground/60 mt-0.5">Gestão Integrada</p>
+        <p className="text-xs mt-0.5 font-extrabold bg-[#f0d6ec] text-center text-[#c17699]">Gestão Integrada</p>
       </div>
 
       <nav className="flex-1 space-y-1">
