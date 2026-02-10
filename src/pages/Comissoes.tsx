@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,8 @@ import { DollarSign, Plus, Check, Pencil, TrendingUp, Users, Receipt } from "luc
 const catLabel: Record<string, string> = { pilates: "Pilates", fisioterapia: "Fisioterapia", estetica: "Estética" };
 
 export default function Comissoes() {
+  const { isRole } = useAuth();
+  const isAdmin = isRole("admin");
   const qc = useQueryClient();
   const [showNewSale, setShowNewSale] = useState(false);
   const [editingRate, setEditingRate] = useState<string | null>(null);
@@ -148,71 +151,73 @@ export default function Comissoes() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Vendas e comissões dos colaboradores</p>
         </div>
-        <Dialog open={showNewSale} onOpenChange={setShowNewSale}>
-          <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-1.5" /> Registrar Venda</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Registrar Venda</DialogTitle></DialogHeader>
-            <div className="space-y-4 mt-2">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Tipo do Vendedor</label>
-                <Select value={sellerType} onValueChange={(v) => { setSellerType(v as any); setSellerId(""); }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="profissional">Profissional</SelectItem>
-                    <SelectItem value="recepcao">Recepção</SelectItem>
-                  </SelectContent>
-                </Select>
+        {isAdmin && (
+          <Dialog open={showNewSale} onOpenChange={setShowNewSale}>
+            <DialogTrigger asChild>
+              <Button><Plus className="h-4 w-4 mr-1.5" /> Registrar Venda</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Registrar Venda</DialogTitle></DialogHeader>
+              <div className="space-y-4 mt-2">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Tipo do Vendedor</label>
+                  <Select value={sellerType} onValueChange={(v) => { setSellerType(v as any); setSellerId(""); }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="profissional">Profissional</SelectItem>
+                      <SelectItem value="recepcao">Recepção</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Vendedor</label>
+                  <Select value={sellerId} onValueChange={setSellerId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      {sellerOptions.map((o) => (
+                        <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Cliente</label>
+                  <Select value={clientId} onValueChange={setClientId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      {clients.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Categoria</label>
+                  <Select value={categoria} onValueChange={setCategoria}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pilates">Pilates</SelectItem>
+                      <SelectItem value="fisioterapia">Fisioterapia</SelectItem>
+                      <SelectItem value="estetica">Estética</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Valor da Venda (R$)</label>
+                  <Input type="number" value={valorVenda} onChange={(e) => setValorVenda(e.target.value)} placeholder="0,00" />
+                  {valorVenda && rates.find((r) => r.categoria === categoria) && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Comissão: {rates.find((r) => r.categoria === categoria)!.percentual}% = R$ {((Number(valorVenda) * Number(rates.find((r) => r.categoria === categoria)!.percentual)) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </p>
+                  )}
+                </div>
+                <Button className="w-full" disabled={!sellerId || !clientId || !valorVenda} onClick={() => createSale.mutate()}>
+                  Registrar Venda
+                </Button>
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Vendedor</label>
-                <Select value={sellerId} onValueChange={setSellerId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {sellerOptions.map((o) => (
-                      <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Cliente</label>
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Categoria</label>
-                <Select value={categoria} onValueChange={setCategoria}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pilates">Pilates</SelectItem>
-                    <SelectItem value="fisioterapia">Fisioterapia</SelectItem>
-                    <SelectItem value="estetica">Estética</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Valor da Venda (R$)</label>
-                <Input type="number" value={valorVenda} onChange={(e) => setValorVenda(e.target.value)} placeholder="0,00" />
-                {valorVenda && rates.find((r) => r.categoria === categoria) && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Comissão: {rates.find((r) => r.categoria === categoria)!.percentual}% = R$ {((Number(valorVenda) * Number(rates.find((r) => r.categoria === categoria)!.percentual)) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </p>
-                )}
-              </div>
-              <Button className="w-full" disabled={!sellerId || !clientId || !valorVenda} onClick={() => createSale.mutate()}>
-                Registrar Venda
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* KPIs */}
@@ -240,46 +245,48 @@ export default function Comissoes() {
         </div>
       </div>
 
-      {/* Commission Rates */}
-      <div className="bg-card rounded-xl border border-border shadow-sm mb-6">
-        <div className="p-5 border-b border-border">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" /> Taxas de Comissão por Categoria
-          </h3>
-        </div>
-        <div className="p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {rates.map((r) => (
-              <div key={r.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                <div>
-                  <p className="font-medium">{catLabel[r.categoria] || r.categoria}</p>
-                  {editingRate === r.id ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <Input
-                        type="number"
-                        className="w-20 h-8"
-                        value={rateValue}
-                        onChange={(e) => setRateValue(e.target.value)}
-                      />
-                      <span className="text-sm">%</span>
-                      <Button size="sm" variant="ghost" onClick={() => updateRate.mutate({ id: r.id, percentual: Number(rateValue) })}>
-                        <Check className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <p className="text-2xl font-bold text-primary mt-1">{r.percentual}%</p>
+      {/* Commission Rates - admin only */}
+      {isAdmin && (
+        <div className="bg-card rounded-xl border border-border shadow-sm mb-6">
+          <div className="p-5 border-b border-border">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" /> Taxas de Comissão por Categoria
+            </h3>
+          </div>
+          <div className="p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {rates.map((r) => (
+                <div key={r.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                  <div>
+                    <p className="font-medium">{catLabel[r.categoria] || r.categoria}</p>
+                    {editingRate === r.id ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="number"
+                          className="w-20 h-8"
+                          value={rateValue}
+                          onChange={(e) => setRateValue(e.target.value)}
+                        />
+                        <span className="text-sm">%</span>
+                        <Button size="sm" variant="ghost" onClick={() => updateRate.mutate({ id: r.id, percentual: Number(rateValue) })}>
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-2xl font-bold text-primary mt-1">{r.percentual}%</p>
+                    )}
+                  </div>
+                  {editingRate !== r.id && (
+                    <Button size="sm" variant="ghost" onClick={() => { setEditingRate(r.id); setRateValue(String(r.percentual)); }}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
                   )}
                 </div>
-                {editingRate !== r.id && (
-                  <Button size="sm" variant="ghost" onClick={() => { setEditingRate(r.id); setRateValue(String(r.percentual)); }}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Sales Table */}
       <div className="bg-card rounded-xl border border-border shadow-sm">
@@ -332,7 +339,7 @@ export default function Comissoes() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {!s.pago && (
+                    {!s.pago && isAdmin && (
                       <Button size="sm" variant="ghost" onClick={() => markPaid.mutate(s.id)} title="Marcar como pago">
                         <Check className="h-4 w-4" />
                       </Button>
