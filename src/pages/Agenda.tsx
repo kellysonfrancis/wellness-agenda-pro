@@ -1,5 +1,5 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { Calendar, ChevronLeft, ChevronRight, Filter, X, Loader2, Plus } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Filter, X, Loader2, Plus, Pencil, Trash2, Save } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import type { Categoria, AppointmentStatus } from "@/types/clinic";
 import { toast } from "@/hooks/use-toast";
@@ -46,28 +46,31 @@ function formatDayHeader(d: Date, isToday: boolean) {
   return { weekday: dayNames[d.getDay()], day: d.getDate(), isToday };
 }
 
-interface NewAppointmentForm {
+interface AppointmentForm {
   clientId: string;
   serviceId: string;
   profissionalId: string;
   date: string;
   startTime: string;
+  status: string;
   observacoes: string;
 }
 
-const emptyForm: NewAppointmentForm = {
+const emptyForm: AppointmentForm = {
   clientId: "",
   serviceId: "",
   profissionalId: "",
   date: "",
   startTime: "",
+  status: "reservado",
   observacoes: "",
 };
 
 export default function Agenda() {
   const {
     appointments, clients, services, professionals, loading,
-    createAppointment, getClientName, getServiceName, getProfessionalName,
+    createAppointment, updateAppointment, deleteAppointment,
+    getClientName, getServiceName, getProfessionalName,
   } = useAgendaData();
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -76,8 +79,10 @@ export default function Agenda() {
   const [filterServico, setFilterServico] = useState("");
   const [filterCategoria, setFilterCategoria] = useState<Categoria | "">("");
   const [showFilters, setShowFilters] = useState(false);
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [form, setForm] = useState<NewAppointmentForm>({ ...emptyForm });
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [form, setForm] = useState<AppointmentForm>({ ...emptyForm });
 
   const today = new Date();
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate.toDateString()]);
@@ -136,11 +141,31 @@ export default function Agenda() {
     const d = day || new Date();
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const timeStr = hour !== undefined ? `${String(hour).padStart(2, "0")}:00` : "";
+    setEditingId(null);
+    setConfirmDelete(false);
     setForm({ ...emptyForm, date: dateStr, startTime: timeStr });
-    setShowNewModal(true);
+    setShowModal(true);
   }, []);
 
-  const handleCreate = useCallback(async () => {
+  const openEditModal = useCallback((evt: DBAppointment) => {
+    const start = new Date(evt.inicio_em);
+    const dateStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+    const timeStr = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
+    setEditingId(evt.id);
+    setConfirmDelete(false);
+    setForm({
+      clientId: evt.client_id,
+      serviceId: evt.service_id,
+      profissionalId: evt.profissional_id,
+      date: dateStr,
+      startTime: timeStr,
+      status: evt.status,
+      observacoes: evt.observacoes || "",
+    });
+    setShowModal(true);
+  }, []);
+
+  const handleSave = useCallback(async () => {
     if (!form.clientId || !form.serviceId || !form.profissionalId || !form.date || !form.startTime) {
       toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
@@ -152,21 +177,48 @@ export default function Agenda() {
     const startDate = new Date(`${form.date}T${form.startTime}:00`);
     const endDate = new Date(startDate.getTime() + svc.duracao_min * 60000);
 
-    const result = await createAppointment({
-      client_id: form.clientId,
-      service_id: form.serviceId,
-      profissional_id: form.profissionalId,
-      inicio_em: startDate.toISOString(),
-      fim_em: endDate.toISOString(),
-      observacoes: form.observacoes || undefined,
-    });
-
-    if (result) {
-      setShowNewModal(false);
-      setForm({ ...emptyForm });
-      toast({ title: "Agendamento criado!", description: `${getClientName(form.clientId)} — ${svc.nome}` });
+    if (editingId) {
+      const result = await updateAppointment(editingId, {
+        client_id: form.clientId,
+        service_id: form.serviceId,
+        profissional_id: form.profissionalId,
+        inicio_em: startDate.toISOString(),
+        fim_em: endDate.toISOString(),
+        status: form.status,
+        observacoes: form.observacoes || null,
+      });
+      if (result) {
+        setShowModal(false);
+        setEditingId(null);
+        toast({ title: "Agendamento atualizado!" });
+      }
+    } else {
+      const result = await createAppointment({
+        client_id: form.clientId,
+        service_id: form.serviceId,
+        profissional_id: form.profissionalId,
+        inicio_em: startDate.toISOString(),
+        fim_em: endDate.toISOString(),
+        observacoes: form.observacoes || undefined,
+      });
+      if (result) {
+        setShowModal(false);
+        setForm({ ...emptyForm });
+        toast({ title: "Agendamento criado!", description: `${getClientName(form.clientId)} — ${svc.nome}` });
+      }
     }
-  }, [form, serviceMap, createAppointment, getClientName]);
+  }, [form, serviceMap, editingId, createAppointment, updateAppointment, getClientName]);
+
+  const handleDelete = useCallback(async () => {
+    if (!editingId) return;
+    const ok = await deleteAppointment(editingId);
+    if (ok) {
+      setShowModal(false);
+      setEditingId(null);
+      setConfirmDelete(false);
+      toast({ title: "Agendamento excluído!" });
+    }
+  }, [editingId, deleteAppointment]);
 
   const filteredProfessionals = useMemo(() => {
     const svc = form.serviceId ? serviceMap[form.serviceId] : null;
@@ -291,10 +343,10 @@ export default function Agenda() {
                           return (
                             <div
                               key={evt.id}
-                              className={`rounded-md px-1.5 py-1 mb-0.5 border-l-[3px] cursor-default hover:opacity-80 transition-opacity overflow-hidden ${catColor} ${statusBorderColors[evt.status as AppointmentStatus] || ""}`}
+                              className={`rounded-md px-1.5 py-1 mb-0.5 border-l-[3px] cursor-pointer hover:opacity-80 transition-opacity overflow-hidden ${catColor} ${statusBorderColors[evt.status as AppointmentStatus] || ""}`}
                               style={{ minHeight: `${Math.min(heightPx, 128)}px` }}
                               title={`${getClientName(evt.client_id)} — ${getServiceName(evt.service_id)}\n${getProfessionalName(evt.profissional_id)}\nStatus: ${evt.status}`}
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => { e.stopPropagation(); openEditModal(evt); }}
                             >
                               <p className="text-[11px] font-semibold truncate leading-tight">{getClientName(evt.client_id)}</p>
                               <p className="text-[10px] truncate leading-tight opacity-80">{getServiceName(evt.service_id)}</p>
@@ -325,13 +377,13 @@ export default function Agenda() {
         <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-info" /> Em Atendimento</span>
       </div>
 
-      {/* New Appointment Modal */}
-      {showNewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30" onClick={() => setShowNewModal(false)}>
-          <div className="bg-card rounded-xl border border-border shadow-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+      {/* Appointment Modal (Create / Edit) */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30" onClick={() => setShowModal(false)}>
+          <div className="bg-card rounded-xl border border-border shadow-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Novo Agendamento</h2>
-              <button onClick={() => setShowNewModal(false)} className="p-1 rounded-lg hover:bg-muted transition-colors">
+              <h2 className="text-lg font-semibold">{editingId ? "Editar Agendamento" : "Novo Agendamento"}</h2>
+              <button onClick={() => setShowModal(false)} className="p-1 rounded-lg hover:bg-muted transition-colors">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -377,6 +429,20 @@ export default function Agenda() {
                 </div>
               </div>
 
+              {editingId && (
+                <div>
+                  <label className="text-sm text-muted-foreground" htmlFor="appt-status">Status</label>
+                  <select id="appt-status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30">
+                    <option value="reservado">Reservado</option>
+                    <option value="confirmado">Confirmado</option>
+                    <option value="em_atendimento">Em Atendimento</option>
+                    <option value="concluido">Concluído</option>
+                    <option value="faltou">Faltou</option>
+                    <option value="cancelado">Cancelado</option>
+                  </select>
+                </div>
+              )}
+
               {form.serviceId && serviceMap[form.serviceId] && (
                 <p className="text-xs text-muted-foreground">
                   Duração: {serviceMap[form.serviceId].duracao_min} minutos
@@ -395,10 +461,20 @@ export default function Agenda() {
             </div>
 
             <div className="flex gap-2 mt-5">
-              <button onClick={handleCreate} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
-                <Plus className="h-4 w-4" /> Agendar
+              <button onClick={handleSave} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+                {editingId ? <><Save className="h-4 w-4" /> Salvar</> : <><Plus className="h-4 w-4" /> Agendar</>}
               </button>
-              <button onClick={() => setShowNewModal(false)} className="px-4 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">
+              {editingId && !confirmDelete && (
+                <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-destructive text-destructive text-sm font-medium hover:bg-destructive/10 transition-colors">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+              {editingId && confirmDelete && (
+                <button onClick={handleDelete} className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+                  <Trash2 className="h-4 w-4" /> Confirmar
+                </button>
+              )}
+              <button onClick={() => setShowModal(false)} className="px-4 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">
                 Cancelar
               </button>
             </div>

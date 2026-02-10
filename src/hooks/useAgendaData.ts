@@ -99,6 +99,43 @@ export function useAgendaData() {
     return result;
   }, []);
 
+  const updateAppointment = useCallback(async (id: string, data: {
+    client_id?: string;
+    service_id?: string;
+    profissional_id?: string;
+    inicio_em?: string;
+    fim_em?: string;
+    status?: string;
+    observacoes?: string | null;
+  }) => {
+    const { data: result, error } = await supabase
+      .from("appointments")
+      .update(data as any)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      toast({ title: "Erro ao atualizar agendamento", description: error.message, variant: "destructive" });
+      return null;
+    }
+
+    setAppointments((prev) => prev.map((a) => (a.id === id ? (result as DBAppointment) : a)));
+    return result;
+  }, []);
+
+  const deleteAppointment = useCallback(async (id: string) => {
+    const { error } = await supabase.from("appointments").delete().eq("id", id);
+
+    if (error) {
+      toast({ title: "Erro ao excluir agendamento", description: error.message, variant: "destructive" });
+      return false;
+    }
+
+    setAppointments((prev) => prev.filter((a) => a.id !== id));
+    return true;
+  }, []);
+
   const getClientName = useCallback((id: string) => clients.find((c) => c.id === id)?.nome ?? "—", [clients]);
   const getServiceName = useCallback((id: string) => services.find((s) => s.id === id)?.nome ?? "—", [services]);
   const getProfessionalName = useCallback((id: string) => professionals.find((p) => p.id === id)?.nome_exibicao ?? "—", [professionals]);
@@ -110,6 +147,8 @@ export function useAgendaData() {
     professionals,
     loading,
     createAppointment,
+    updateAppointment,
+    deleteAppointment,
     getClientName,
     getServiceName,
     getProfessionalName,
