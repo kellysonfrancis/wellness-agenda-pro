@@ -12,6 +12,7 @@ import Financeiro from "./pages/Financeiro";
 import Servicos from "./pages/Servicos";
 import Pacotes from "./pages/Pacotes";
 import Configuracoes from "./pages/Configuracoes";
+import BI from "./pages/BI";
 import ClientBooking from "./pages/ClientBooking";
 import ClientAppointments from "./pages/ClientAppointments";
 import ClientPackages from "./pages/ClientPackages";
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/servicos" element={<Servicos />} />
             <Route path="/pacotes" element={<Pacotes />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
+            <Route path="/bi" element={<BI />} />
             <Route path="/agendar" element={<ClientBooking />} />
             <Route path="/meus-agendamentos" element={<ClientAppointments />} />
             <Route path="/meus-pacotes" element={<ClientPackages />} />
