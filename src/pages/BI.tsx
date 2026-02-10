@@ -13,8 +13,9 @@ import { useBIData, PIE_COLORS } from "@/components/bi/useBIData";
 export default function BI() {
   const [period, setPeriod] = useState<PeriodFilter>("all");
   const [category, setCategory] = useState<CategoryFilter>("all");
+  const [professionalId, setProfessionalId] = useState("all");
 
-  const { data, isLoading } = useBIData(period, category);
+  const { data, isLoading } = useBIData(period, category, professionalId);
 
   const {
     revenue = [], catRev = [], payStatus = [], funnel = [], ltv = [],
@@ -44,7 +45,7 @@ export default function BI() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Análises e métricas do negócio</p>
         </div>
-        <BIFilters period={period} category={category} onPeriodChange={setPeriod} onCategoryChange={setCategory} />
+        <BIFilters period={period} category={category} professionalId={professionalId} onPeriodChange={setPeriod} onCategoryChange={setCategory} onProfessionalChange={setProfessionalId} />
       </div>
 
       {/* KPIs - Revenue */}
