@@ -36,8 +36,9 @@ export const mockProfessionals: ProfessionalProfile[] = [
 ];
 
 export const mockServices: Service[] = [
-  { id: "s1", categoria: "pilates", nome: "Pilates Solo", duracaoMin: 50, precoBase: 120, permitePacote: true, ativo: true },
-  { id: "s2", categoria: "pilates", nome: "Pilates Duo", duracaoMin: 50, precoBase: 90, permitePacote: true, ativo: true },
+  { id: "s1", categoria: "pilates", nome: "Pilates Solo", duracaoMin: 50, precoBase: 120, permitePacote: true, maxAlunos: 1, ativo: true },
+  { id: "s2", categoria: "pilates", nome: "Pilates Duo", duracaoMin: 50, precoBase: 90, permitePacote: true, maxAlunos: 2, ativo: true },
+  { id: "s8", categoria: "pilates", nome: "Pilates Grupo", duracaoMin: 50, precoBase: 65, permitePacote: true, maxAlunos: 6, ativo: true },
   { id: "s3", categoria: "fisioterapia", nome: "Fisioterapia Ortopédica", duracaoMin: 60, precoBase: 180, permitePacote: true, ativo: true },
   { id: "s4", categoria: "fisioterapia", nome: "RPG", duracaoMin: 50, precoBase: 200, permitePacote: true, ativo: true },
   { id: "s5", categoria: "estetica", nome: "Limpeza de Pele", duracaoMin: 90, precoBase: 250, permitePacote: true, ativo: true },
@@ -46,8 +47,10 @@ export const mockServices: Service[] = [
 ];
 
 export const mockPlans: ProductPlan[] = [
-  { id: "pp1", tipo: "mensal_recorrente", nome: "Pilates 2x/sem", categoria: "pilates", preco: 480, vigenciaMeses: 1, aulasPorMes: 8, ilimitado: false, ativo: true },
-  { id: "pp2", tipo: "mensal_recorrente", nome: "Pilates Ilimitado", categoria: "pilates", preco: 750, vigenciaMeses: 6, ilimitado: true, termoFidelizacao: "Fidelidade de 6 meses", multaCancelamento: 500, ativo: true },
+  { id: "pp1", tipo: "mensal_recorrente", nome: "Pilates 2x/sem", categoria: "pilates", preco: 480, frequenciaPilates: "2x_semana", vigenciaMeses: 1, aulasPorMes: 8, ilimitado: false, descontoIndicacaoPct: 10, descontoFamiliarPct: 15, ativo: true },
+  { id: "pp2", tipo: "mensal_recorrente", nome: "Pilates 3x/sem", categoria: "pilates", preco: 650, frequenciaPilates: "3x_semana", vigenciaMeses: 1, aulasPorMes: 12, ilimitado: false, descontoIndicacaoPct: 10, descontoFamiliarPct: 15, ativo: true },
+  { id: "pp6", tipo: "mensal_recorrente", nome: "Pilates Avulsa", categoria: "pilates", preco: 120, frequenciaPilates: "avulsa", vigenciaMeses: 1, aulasPorMes: 1, ilimitado: false, ativo: true },
+  { id: "pp7", tipo: "mensal_recorrente", nome: "Pilates Ilimitado", categoria: "pilates", preco: 750, vigenciaMeses: 6, ilimitado: true, termoFidelizacao: "Fidelidade de 6 meses", multaCancelamento: 500, descontoIndicacaoPct: 10, descontoFamiliarPct: 15, ativo: true },
   { id: "pp3", tipo: "pacote_creditos", nome: "Fisio 10 Sessões", categoria: "fisioterapia", preco: 1500, creditosTotal: 10, validadeDias: 120, ativo: true },
   { id: "pp4", tipo: "combo_itens", nome: "Combo Estética Facial", categoria: "estetica", preco: 800, itensCombo: JSON.stringify([{ serviceId: "s5", quantidade: 2 }, { serviceId: "s6", quantidade: 1 }]), validadeDias: 90, ativo: true },
   { id: "pp5", tipo: "creditos_estetica", nome: "5 Créditos Estética", categoria: "estetica", preco: 1200, creditosTotal: 5, validadeDias: 180, ativo: true },

@@ -53,8 +53,11 @@ export interface Service {
   duracaoMin: number;
   precoBase: number;
   permitePacote: boolean;
+  maxAlunos?: number | null; // capacidade máxima por horário (Pilates)
   ativo: boolean;
 }
+
+export type PilatesFrequency = "2x_semana" | "3x_semana" | "avulsa";
 
 export interface ProductPlan {
   id: string;
@@ -66,11 +69,14 @@ export interface ProductPlan {
   creditosTotal?: number | null;
   itensCombo?: string | null;
   regrasRecorrencia?: string | null;
+  frequenciaPilates?: PilatesFrequency | null;
   vigenciaMeses?: number | null;
   aulasPorMes?: number | null;
   ilimitado?: boolean;
   termoFidelizacao?: string | null;
   multaCancelamento?: number | null;
+  descontoIndicacaoPct?: number | null; // % desconto por indicação
+  descontoFamiliarPct?: number | null;  // % desconto familiar
   ativo: boolean;
 }
 
