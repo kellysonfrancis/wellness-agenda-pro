@@ -1,6 +1,6 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { Calendar, ChevronLeft, ChevronRight, Filter, X, Loader2, Plus, Pencil, Trash2, Save, CalendarPlus, RefreshCw, Package } from "lucide-react";
-import { useState, useMemo, useCallback } from "react";
+import { Calendar, ChevronLeft, ChevronRight, Filter, X, Loader2, Plus, Pencil, Trash2, Save, CalendarPlus, RefreshCw, Package, MessageSquare, Check, XCircle, Clock } from "lucide-react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import type { Categoria, AppointmentStatus } from "@/types/clinic";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,28 @@ const categoryColors: Record<Categoria, string> = {
 };
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 7);
+
+function WhatsAppIndicator({ status }: { status?: string }) {
+  if (!status) return null;
+
+  const config: Record<string, { icon: React.ElementType; color: string; title: string }> = {
+    enviado: { icon: Clock, color: "text-warning", title: "Aguardando resposta" },
+    confirmado_cliente: { icon: Check, color: "text-success", title: "Confirmado via WhatsApp" },
+    cancelado_cliente: { icon: XCircle, color: "text-destructive", title: "Cancelado via WhatsApp" },
+    erro: { icon: XCircle, color: "text-muted-foreground", title: "Erro no envio" },
+  };
+
+  const cfg = config[status];
+  if (!cfg) return null;
+
+  const Icon = cfg.icon;
+  return (
+    <span title={cfg.title} className={`shrink-0 ${cfg.color}`}>
+      <MessageSquare className="h-3 w-3 inline-block" />
+      <Icon className="h-2.5 w-2.5 inline-block -ml-0.5 -mt-1" />
+    </span>
+  );
+}
 
 type ViewMode = "week" | "day";
 
@@ -98,6 +120,33 @@ export default function Agenda() {
   const today = new Date();
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate.toDateString()]);
   const viewDays = viewMode === "week" ? weekDays : [currentDate];
+
+  // WhatsApp confirmation statuses per appointment
+  const [waStatuses, setWaStatuses] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const fetchWaStatuses = async () => {
+      const apptIds = appointments.map(a => a.id);
+      if (apptIds.length === 0) return;
+
+      const { data } = await supabase
+        .from("whatsapp_log")
+        .select("appointment_id, status, tipo")
+        .eq("tipo", "confirmacao")
+        .in("appointment_id", apptIds);
+
+      if (data) {
+        const map: Record<string, string> = {};
+        for (const log of data) {
+          if (log.appointment_id) {
+            map[log.appointment_id] = log.status;
+          }
+        }
+        setWaStatuses(map);
+      }
+    };
+    fetchWaStatuses();
+  }, [appointments]);
 
   const categorias = useMemo(() => [...new Set(services.map((s) => s.categoria as Categoria))], [services]);
 
@@ -423,7 +472,10 @@ export default function Agenda() {
                               title={`${getClientName(evt.client_id)} — ${getServiceName(evt.service_id)}\n${getProfessionalName(evt.profissional_id)}\nStatus: ${evt.status}`}
                               onClick={(e) => { e.stopPropagation(); openEditModal(evt); }}
                             >
-                              <p className="text-[11px] font-semibold truncate leading-tight">{getClientName(evt.client_id)}</p>
+                              <div className="flex items-center gap-1">
+                                <p className="text-[11px] font-semibold truncate leading-tight flex-1">{getClientName(evt.client_id)}</p>
+                                <WhatsAppIndicator status={waStatuses[evt.id]} />
+                              </div>
                               <p className="text-[10px] truncate leading-tight opacity-80">{getServiceName(evt.service_id)}</p>
                               <p className="text-[10px] truncate leading-tight opacity-60">
                                 {start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} – {end.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
@@ -450,6 +502,10 @@ export default function Agenda() {
         <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-warning" /> Reservado</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-success" /> Confirmado</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-info" /> Em Atendimento</span>
+        <span className="mx-2 border-l border-border h-4" />
+        <span className="flex items-center gap-1.5"><MessageSquare className="h-3 w-3 text-warning" /> Aguardando WhatsApp</span>
+        <span className="flex items-center gap-1.5"><MessageSquare className="h-3 w-3 text-success" /> Confirmado WhatsApp</span>
+        <span className="flex items-center gap-1.5"><MessageSquare className="h-3 w-3 text-destructive" /> Cancelado WhatsApp</span>
       </div>
 
       {/* Appointment Modal (Create / Edit) */}
