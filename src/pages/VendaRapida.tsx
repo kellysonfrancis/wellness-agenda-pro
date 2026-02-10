@@ -8,9 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { toast } from "@/hooks/use-toast";
-import { ShoppingCart, Check, UserPlus } from "lucide-react";
+import { ShoppingCart, Check, UserPlus, ChevronsUpDown } from "lucide-react";
 import QuickClientModal from "@/components/venda/QuickClientModal";
+import { cn } from "@/lib/utils";
 
 const catLabel: Record<string, string> = { pilates: "Pilates", fisioterapia: "Fisioterapia", estetica: "Estética" };
 
@@ -76,6 +79,7 @@ export default function VendaRapida() {
   const [categoria, setCategoria] = useState("pilates");
   const [valorVenda, setValorVenda] = useState("");
   const [showQuickClient, setShowQuickClient] = useState(false);
+  const [clientOpen, setClientOpen] = useState(false);
 
   // Set default seller on load
   useEffect(() => {
@@ -180,14 +184,30 @@ export default function VendaRapida() {
                 <UserPlus className="h-3.5 w-3.5" /> Novo
               </Button>
             </div>
-            <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
-              <SelectContent>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={clientOpen} onOpenChange={setClientOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={clientOpen} className="w-full justify-between font-normal">
+                  {clientId ? clients.find((c) => c.id === clientId)?.nome : "Selecione o cliente"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar cliente..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {clients.map((c) => (
+                        <CommandItem key={c.id} value={c.nome} onSelect={() => { setClientId(c.id); setClientOpen(false); }}>
+                          <Check className={cn("mr-2 h-4 w-4", clientId === c.id ? "opacity-100" : "opacity-0")} />
+                          {c.nome}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Category */}
