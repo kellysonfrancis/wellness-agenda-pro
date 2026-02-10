@@ -101,6 +101,7 @@ export default function AppSidebar() {
 
   const [sidebarTheme, setSidebarTheme] = useState(() => localStorage.getItem("sidebar-theme") || "default");
   const [customColor, setCustomColor] = useState(() => localStorage.getItem("sidebar-custom-color") || "#c2185b");
+  const [sidebarOpacity, setSidebarOpacity] = useState(() => Number(localStorage.getItem("sidebar-opacity") ?? 70));
   const [showPicker, setShowPicker] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -141,7 +142,7 @@ export default function AppSidebar() {
     }`;
 
   const sidebar = (
-    <div data-sidebar-root className="flex flex-col h-full bg-sidebar/70 backdrop-blur-2xl border-r border-sidebar-border/20 w-64 p-4">
+    <div data-sidebar-root className="flex flex-col h-full backdrop-blur-2xl border-r border-sidebar-border/20 w-64 p-4" style={{ backgroundColor: `hsl(var(--sidebar) / ${sidebarOpacity / 100})` }}>
       <div className="mb-6 px-3 flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary/20">
           <Stethoscope className="h-5 w-5 text-sidebar-primary" />
@@ -205,6 +206,22 @@ export default function AppSidebar() {
               />
             </div>
           )}
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1.5">
+          <span className="text-xs text-sidebar-foreground/60 whitespace-nowrap">Opacidade</span>
+          <input
+            type="range"
+            min={20}
+            max={100}
+            value={sidebarOpacity}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setSidebarOpacity(v);
+              localStorage.setItem("sidebar-opacity", String(v));
+            }}
+            className="flex-1 h-1.5 accent-sidebar-primary cursor-pointer"
+          />
+          <span className="text-xs text-sidebar-foreground/60 w-7 text-right">{sidebarOpacity}%</span>
         </div>
         <button
           onClick={() => setDark(!dark)}
