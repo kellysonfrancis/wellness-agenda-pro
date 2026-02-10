@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
 const catLabel: Record<string, string> = { pilates: "Pilates", fisioterapia: "Fisioterapia", estetica: "Estética" };
+const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--primary) / 0.6)", "hsl(var(--primary) / 0.3)"];
 
 export default function Comissoes() {
   const { isRole } = useAuth();
@@ -201,6 +202,15 @@ export default function Comissoes() {
     })).sort((a, b) => a.mes.localeCompare(b.mes));
   }, [filteredSales]);
 
+  const categoryData = useMemo(() => {
+    const map = new Map<string, number>();
+    filteredSales.forEach((s) => {
+      const label = catLabel[s.categoria] || s.categoria;
+      map.set(label, (map.get(label) || 0) + Number(s.valor_comissao));
+    });
+    return Array.from(map, ([name, value]) => ({ name, value })).filter((d) => d.value > 0);
+  }, [filteredSales]);
+
   const fmt = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const buildRows = () =>
@@ -373,6 +383,39 @@ export default function Comissoes() {
               <Bar dataKey="Comissões" fill="hsl(var(--primary) / 0.5)" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Pagas" fill="hsl(var(--success, 142 71% 45%))" radius={[4, 4, 0, 0]} />
             </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Category Pie Chart */}
+      {categoryData.length > 0 && (
+        <div className="bg-card rounded-xl border border-border shadow-sm p-5 mb-6">
+          <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+            <DollarSign className="h-4 w-4 text-primary" /> Comissões por Categoria
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <PieChart>
+              <Pie
+                data={categoryData}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={100}
+                paddingAngle={4}
+                dataKey="value"
+                nameKey="name"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              >
+                {categoryData.map((_, i) => (
+                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                ))}
+              </Pie>
+              <RechartsTooltip
+                formatter={(value: number) => [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, "Comissão"]}
+                contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
+              />
+              <Legend />
+            </PieChart>
           </ResponsiveContainer>
         </div>
       )}
