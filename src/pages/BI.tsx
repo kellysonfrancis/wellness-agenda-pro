@@ -1,6 +1,6 @@
 import { useState } from "react";
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { BarChart3, TrendingUp, TrendingDown, Users, PieChart, Receipt, Landmark, Wallet, Loader2 } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Users, PieChart, Receipt, Landmark, Wallet, Loader2, FileSpreadsheet, FileText } from "lucide-react";
 import {
   BarChart, Bar, PieChart as RPie, Pie, Cell,
   FunnelChart, Funnel, LabelList, ComposedChart, Line,
@@ -9,6 +9,8 @@ import {
 import BIFilters, { type PeriodFilter, type CategoryFilter } from "@/components/bi/BIFilters";
 import ChartCard from "@/components/bi/ChartCard";
 import { useBIData, PIE_COLORS } from "@/components/bi/useBIData";
+import { exportToExcel, exportToPDF } from "@/components/bi/biExport";
+import { Button } from "@/components/ui/button";
 
 export default function BI() {
   const [period, setPeriod] = useState<PeriodFilter>("all");
@@ -45,7 +47,17 @@ export default function BI() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Análises e métricas do negócio</p>
         </div>
-        <BIFilters period={period} category={category} professionalId={professionalId} onPeriodChange={setPeriod} onCategoryChange={setCategory} onProfessionalChange={setProfessionalId} />
+        <div className="flex flex-wrap items-center gap-3">
+          <BIFilters period={period} category={category} professionalId={professionalId} onPeriodChange={setPeriod} onCategoryChange={setCategory} onProfessionalChange={setProfessionalId} />
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => exportToExcel({ revenue, revenueVsExpenses, catRev, payStatus, expenseByCategory, ltv, cashFlowByAccount, accountBalances, totalRevenue, avgTicket, activeClients, totalExpenses, profit, profitMargin })}>
+              <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => exportToPDF({ revenue, revenueVsExpenses, catRev, payStatus, expenseByCategory, ltv, cashFlowByAccount, accountBalances, totalRevenue, avgTicket, activeClients, totalExpenses, profit, profitMargin })}>
+              <FileText className="h-4 w-4 mr-1.5" /> PDF
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* KPIs - Revenue */}
