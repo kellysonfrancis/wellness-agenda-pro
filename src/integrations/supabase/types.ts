@@ -504,6 +504,39 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_testimonials: {
+        Row: {
+          ativo: boolean
+          avaliacao: number
+          created_at: string
+          depoimento: string
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          avaliacao?: number
+          created_at?: string
+          depoimento: string
+          id?: string
+          nome: string
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          avaliacao?: number
+          created_at?: string
+          depoimento?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       makeup_classes: {
         Row: {
           client_id: string

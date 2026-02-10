@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Clock, User, Phone, Mail, CheckCircle, ChevronRight, ArrowLeft, Loader2 } from "lucide-react";
+import { Calendar, Clock, User, Phone, Mail, CheckCircle, ChevronRight, ArrowLeft, Loader2, Star } from "lucide-react";
 import { format, addDays, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -55,6 +55,7 @@ export default function AgendarPublico() {
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([]);
   const [config, setConfig] = useState<LandingConfig | null>(null);
+  const [testimonials, setTestimonials] = useState<{ id: string; nome: string; depoimento: string; avaliacao: number }[]>([]);
 
   const [selectedService, setSelectedService] = useState<ServiceOption | null>(null);
   const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalOption | null>(null);
@@ -75,9 +76,10 @@ export default function AgendarPublico() {
       const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const headers = { "apikey": apikey };
 
-      const [optionsRes, configRes] = await Promise.all([
+      const [optionsRes, configRes, testimonialsRes] = await Promise.all([
         fetch(`${baseUrl}/functions/v1/public-booking?action=options`, { headers }),
         fetch(`${baseUrl}/rest/v1/landing_config?select=*&limit=1`, { headers }),
+        fetch(`${baseUrl}/rest/v1/landing_testimonials?select=id,nome,depoimento,avaliacao&ativo=eq.true&order=ordem`, { headers }),
       ]);
 
       const optionsJson = await optionsRes.json();
@@ -88,6 +90,8 @@ export default function AgendarPublico() {
       if (Array.isArray(configJson) && configJson.length > 0) {
         setConfig(configJson[0]);
       }
+      const testimonialsJson = await testimonialsRes.json();
+      if (Array.isArray(testimonialsJson)) setTestimonials(testimonialsJson);
       setLoading(false);
     };
     fetchAll();
@@ -467,6 +471,28 @@ export default function AgendarPublico() {
           </div>
         )}
       </div>
+
+      {/* Testimonials */}
+      {testimonials.length > 0 && (
+        <div className="max-w-lg mx-auto px-4 mt-10">
+          <h3 className="text-lg font-semibold text-center mb-4" style={{ color: corTexto }}>
+            O que nossos clientes dizem
+          </h3>
+          <div className="space-y-3">
+            {testimonials.map((t) => (
+              <div key={t.id} className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center gap-1 mb-2">
+                  {[1, 2, 3, 4, 5].map(s => (
+                    <Star key={s} className={`h-3.5 w-3.5 ${s <= t.avaliacao ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground/20"}`} />
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground italic mb-2">"{t.depoimento}"</p>
+                <p className="text-xs font-medium" style={{ color: corPrimaria }}>— {t.nome}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="mt-12 border-t border-border/50 py-6 px-4">

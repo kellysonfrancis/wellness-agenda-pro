@@ -1,6 +1,7 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe } from "lucide-react";
 import LandingConfigEditor from "@/components/landing/LandingConfigEditor";
+import TestimonialsEditor from "@/components/landing/TestimonialsEditor";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -437,6 +438,18 @@ export default function Configuracoes() {
             Personalize a landing page pública de agendamento (logo, cores, nome) e copie o link para compartilhar.
           </p>
           <LandingConfigEditor />
+        </div>
+
+        {/* Testimonials */}
+        <div className="bg-card rounded-xl border border-border shadow-sm p-5 space-y-4">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-primary" />
+            Depoimentos de Clientes
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Adicione depoimentos para exibir na página de agendamento público.
+          </p>
+          <TestimonialsEditor />
         </div>
       </div>
     </GlobalLayout>
