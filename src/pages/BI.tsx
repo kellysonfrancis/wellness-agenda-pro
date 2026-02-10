@@ -1,109 +1,32 @@
+import { useState } from "react";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { BarChart3, TrendingUp, Users, PieChart } from "lucide-react";
 import {
-  BarChart, Bar, LineChart, Line, PieChart as RPie, Pie, Cell,
+  BarChart, Bar, PieChart as RPie, Pie, Cell,
   FunnelChart, Funnel, LabelList,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
-import { mockPayments, mockClients, mockAppointments, mockEntitlements, mockServices, getClientName } from "@/data/mockData";
-
-/* ── helpers ── */
-const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-
-function revenueByMonth() {
-  const map: Record<string, number> = {};
-  months.forEach((m) => (map[m] = 0));
-  mockPayments.forEach((p) => {
-    const d = new Date(p.criadoEm);
-    map[months[d.getMonth()]] = (map[months[d.getMonth()]] || 0) + p.valorPago;
-  });
-  return months.map((m) => ({ mes: m, receita: map[m] }));
-}
-
-function categoryRevenue() {
-  const map: Record<string, number> = {};
-  mockAppointments.forEach((a) => {
-    const svc = mockServices.find((s) => s.id === a.serviceId);
-    if (!svc) return;
-    const cat = svc.categoria;
-    const payment = mockPayments.find((p) => p.appointmentId === a.id);
-    map[cat] = (map[cat] || 0) + (payment?.valorPago ?? svc.precoBase);
-  });
-  return Object.entries(map).map(([name, value]) => ({ name: catLabel[name] || name, value }));
-}
-
-function paymentStatusData() {
-  const counts: Record<string, number> = {};
-  mockPayments.forEach((p) => {
-    counts[p.status] = (counts[p.status] || 0) + 1;
-  });
-  return Object.entries(counts).map(([name, value]) => ({ name: statusLabel[name] || name, value }));
-}
-
-function funnelData() {
-  const leads = mockClients.length;
-  const withAppt = new Set(mockAppointments.map((a) => a.clientId)).size;
-  const withPack = new Set(mockEntitlements.map((e) => e.clientId)).size;
-  const recurring = mockEntitlements.filter((e) => e.status === "ativo").length;
-  return [
-    { name: "Cadastros", value: leads, fill: "hsl(172 66% 30%)" },
-    { name: "Agendaram", value: withAppt, fill: "hsl(205 80% 50%)" },
-    { name: "Compraram Pacote", value: withPack, fill: "hsl(38 92% 50%)" },
-    { name: "Ativos", value: recurring, fill: "hsl(152 60% 40%)" },
-  ];
-}
-
-function ltvData() {
-  const clientTotals: Record<string, number> = {};
-  mockPayments.forEach((p) => {
-    clientTotals[p.clientId] = (clientTotals[p.clientId] || 0) + p.valorPago;
-  });
-  return Object.entries(clientTotals)
-    .map(([id, total]) => ({ cliente: getClientName(id), ltv: total }))
-    .sort((a, b) => b.ltv - a.ltv);
-}
-
-const catLabel: Record<string, string> = { pilates: "Pilates", fisioterapia: "Fisioterapia", estetica: "Estética" };
-const statusLabel: Record<string, string> = { pago: "Pago", pendente: "Pendente", parcial: "Parcial", estornado: "Estornado", isento: "Isento" };
-
-const PIE_COLORS = [
-  "hsl(172 66% 30%)",
-  "hsl(38 92% 50%)",
-  "hsl(205 80% 50%)",
-  "hsl(152 60% 40%)",
-  "hsl(0 72% 51%)",
-];
-
-function ChartCard({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
-  return (
-    <div className="bg-card rounded-xl border border-border shadow-sm">
-      <div className="p-5 border-b border-border flex items-center gap-2">
-        <Icon className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold">{title}</h3>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
-  );
-}
+import BIFilters, { type PeriodFilter, type CategoryFilter } from "@/components/bi/BIFilters";
+import ChartCard from "@/components/bi/ChartCard";
+import { useBIData, PIE_COLORS } from "@/components/bi/useBIData";
 
 export default function BI() {
-  const revenue = revenueByMonth();
-  const catRev = categoryRevenue();
-  const payStatus = paymentStatusData();
-  const funnel = funnelData();
-  const ltv = ltvData();
+  const [period, setPeriod] = useState<PeriodFilter>("all");
+  const [category, setCategory] = useState<CategoryFilter>("all");
 
-  const totalRevenue = mockPayments.reduce((s, p) => s + p.valorPago, 0);
-  const avgTicket = totalRevenue / (mockPayments.filter((p) => p.valorPago > 0).length || 1);
-  const activeClients = new Set(mockAppointments.map((a) => a.clientId)).size;
+  const { revenue, catRev, payStatus, funnel, ltv, totalRevenue, avgTicket, activeClients } =
+    useBIData(period, category);
 
   return (
     <GlobalLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-primary" /> Business Intelligence
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">Análises e métricas do negócio</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <BarChart3 className="h-6 w-6 text-primary" /> Business Intelligence
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">Análises e métricas do negócio</p>
+        </div>
+        <BIFilters period={period} category={category} onPeriodChange={setPeriod} onCategoryChange={setCategory} />
       </div>
 
       {/* KPIs */}
@@ -116,14 +39,14 @@ export default function BI() {
           </div>
         </div>
         <div className="stat-card flex items-start gap-4">
-          <div className="p-2.5 rounded-lg bg-info/10 text-info"><PieChart className="h-5 w-5" /></div>
+          <div className="p-2.5 rounded-lg bg-primary/10 text-primary"><PieChart className="h-5 w-5" /></div>
           <div>
             <p className="text-sm text-muted-foreground">Ticket Médio</p>
             <p className="text-2xl font-bold mt-0.5">R$ {avgTicket.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}</p>
           </div>
         </div>
         <div className="stat-card flex items-start gap-4">
-          <div className="p-2.5 rounded-lg bg-success/10 text-success"><Users className="h-5 w-5" /></div>
+          <div className="p-2.5 rounded-lg bg-primary/10 text-primary"><Users className="h-5 w-5" /></div>
           <div>
             <p className="text-sm text-muted-foreground">Clientes Ativos</p>
             <p className="text-2xl font-bold mt-0.5">{activeClients}</p>
@@ -133,7 +56,6 @@ export default function BI() {
 
       {/* Charts grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Revenue over time */}
         <ChartCard title="Faturamento Mensal" icon={TrendingUp}>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={revenue}>
@@ -146,7 +68,6 @@ export default function BI() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Category distribution */}
         <ChartCard title="Receita por Categoria" icon={PieChart}>
           <ResponsiveContainer width="100%" height={260}>
             <RPie>
@@ -160,7 +81,6 @@ export default function BI() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Funnel */}
         <ChartCard title="Funil de Conversão" icon={Users}>
           <ResponsiveContainer width="100%" height={260}>
             <FunnelChart>
@@ -173,7 +93,6 @@ export default function BI() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Payment status */}
         <ChartCard title="Status de Pagamentos" icon={BarChart3}>
           <ResponsiveContainer width="100%" height={260}>
             <RPie>
@@ -189,7 +108,6 @@ export default function BI() {
         </ChartCard>
       </div>
 
-      {/* LTV table */}
       <ChartCard title="LTV por Cliente" icon={TrendingUp}>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={ltv} layout="vertical">
