@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Bell, Calendar, DollarSign, X } from "lucide-react";
+import { Bell, Calendar, DollarSign, ListOrdered, X } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 interface Notification {
   id: string;
-  type: "appointment" | "payment";
+  type: "appointment" | "payment" | "waitlist";
   title: string;
   description: string;
   timestamp: string;
@@ -48,7 +48,7 @@ export default function RealtimeNotifications() {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "appointments" },
-        (payload) => {
+        async (payload) => {
           const row = payload.new as any;
           const old = payload.old as any;
           if (row.status !== old.status) {
@@ -69,6 +69,51 @@ export default function RealtimeNotifications() {
               read: false,
             };
             addNotification(n);
+
+            // Detect vacancy: when appointment is cancelled/faltou, check waitlist
+            if (row.status === "cancelado" || row.status === "faltou") {
+              try {
+                const { data: waitlistEntries } = await supabase
+                  .from("waitlist")
+                  .select("id, client_id, clients(nome), services(nome)")
+                  .eq("service_id", row.service_id)
+                  .eq("status", "aguardando" as any)
+                  .order("created_at", { ascending: true })
+                  .limit(5);
+
+                if (waitlistEntries && waitlistEntries.length > 0) {
+                  const clientNames = waitlistEntries
+                    .map((w: any) => (w.clients as any)?.nome)
+                    .filter(Boolean)
+                    .slice(0, 3);
+                  const serviceName = (waitlistEntries[0] as any).services?.nome || "serviço";
+                  const count = waitlistEntries.length;
+
+                  const wn: Notification = {
+                    id: `waitlist-vacancy-${row.id}-${Date.now()}`,
+                    type: "waitlist",
+                    title: `🟢 Vaga aberta! ${count} na fila`,
+                    description: `${clientNames.join(", ")}${count > 3 ? ` e +${count - 3}` : ""} aguardam vaga para ${serviceName}`,
+                    timestamp: new Date().toISOString(),
+                    read: false,
+                  };
+                  addNotification(wn);
+                  toast.warning(`Vaga aberta! ${count} cliente(s) aguardando`, {
+                    description: `${clientNames.join(", ")} na fila para ${serviceName}`,
+                    duration: 8000,
+                  });
+
+                  // Auto-notify first in line
+                  const first = waitlistEntries[0];
+                  await supabase
+                    .from("waitlist")
+                    .update({ status: "notificado" as any, notificado_em: new Date().toISOString() })
+                    .eq("id", first.id);
+                }
+              } catch (err) {
+                console.error("Waitlist vacancy check failed:", err);
+              }
+            }
           }
         }
       )
@@ -88,6 +133,25 @@ export default function RealtimeNotifications() {
           };
           addNotification(n);
           toast.success("Pagamento registrado", { description: n.description });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "waitlist" },
+        (payload) => {
+          const row = payload.new as any;
+          const old = payload.old as any;
+          if (row.status !== old.status && row.status === "notificado") {
+            const n: Notification = {
+              id: `wl-notif-${row.id}-${Date.now()}`,
+              type: "waitlist",
+              title: "Cliente notificado (lista de espera)",
+              description: "Um cliente foi notificado sobre vaga disponível",
+              timestamp: row.notificado_em || new Date().toISOString(),
+              read: false,
+            };
+            addNotification(n);
+          }
         }
       )
       .subscribe();
@@ -157,6 +221,8 @@ export default function RealtimeNotifications() {
                     <div className="mt-0.5">
                       {n.type === "appointment" ? (
                         <Calendar className="h-4 w-4 text-primary" />
+                      ) : n.type === "waitlist" ? (
+                        <ListOrdered className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                       ) : (
                         <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
                       )}
