@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Agenda from "./pages/Agenda";
@@ -14,6 +15,7 @@ import Pacotes from "./pages/Pacotes";
 import Configuracoes from "./pages/Configuracoes";
 import BI from "./pages/BI";
 import Despesas from "./pages/Despesas";
+import Usuarios from "./pages/Usuarios";
 import ClientBooking from "./pages/ClientBooking";
 import ClientAppointments from "./pages/ClientAppointments";
 import ClientPackages from "./pages/ClientPackages";
@@ -31,18 +33,19 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/agenda" element={<Agenda />} />
-            <Route path="/clientes" element={<Clientes />} />
-            <Route path="/financeiro" element={<Financeiro />} />
-            <Route path="/servicos" element={<Servicos />} />
-            <Route path="/pacotes" element={<Pacotes />} />
-            <Route path="/configuracoes" element={<Configuracoes />} />
-            <Route path="/bi" element={<BI />} />
-            <Route path="/despesas" element={<Despesas />} />
-            <Route path="/agendar" element={<ClientBooking />} />
-            <Route path="/meus-agendamentos" element={<ClientAppointments />} />
-            <Route path="/meus-pacotes" element={<ClientPackages />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/agenda" element={<ProtectedRoute roles={["admin", "recepcao", "profissional"]}><Agenda /></ProtectedRoute>} />
+            <Route path="/clientes" element={<ProtectedRoute roles={["admin", "recepcao"]}><Clientes /></ProtectedRoute>} />
+            <Route path="/financeiro" element={<ProtectedRoute roles={["admin", "recepcao"]}><Financeiro /></ProtectedRoute>} />
+            <Route path="/servicos" element={<ProtectedRoute roles={["admin"]}><Servicos /></ProtectedRoute>} />
+            <Route path="/pacotes" element={<ProtectedRoute roles={["admin"]}><Pacotes /></ProtectedRoute>} />
+            <Route path="/configuracoes" element={<ProtectedRoute roles={["admin"]}><Configuracoes /></ProtectedRoute>} />
+            <Route path="/bi" element={<ProtectedRoute roles={["admin"]}><BI /></ProtectedRoute>} />
+            <Route path="/despesas" element={<ProtectedRoute roles={["admin"]}><Despesas /></ProtectedRoute>} />
+            <Route path="/usuarios" element={<ProtectedRoute roles={["admin"]}><Usuarios /></ProtectedRoute>} />
+            <Route path="/agendar" element={<ProtectedRoute roles={["cliente"]}><ClientBooking /></ProtectedRoute>} />
+            <Route path="/meus-agendamentos" element={<ProtectedRoute roles={["cliente"]}><ClientAppointments /></ProtectedRoute>} />
+            <Route path="/meus-pacotes" element={<ProtectedRoute roles={["cliente"]}><ClientPackages /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

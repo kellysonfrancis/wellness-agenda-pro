@@ -1,18 +1,17 @@
-import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { NavLink as RouterNavLink } from "react-router-dom";
+import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import {
   LayoutDashboard, Calendar, Users, DollarSign, Sparkles,
   Package, Settings, CalendarPlus, CalendarCheck, ShoppingBag,
-  LogOut, Menu, X, BarChart3, Receipt
+  LogOut, Menu, X, BarChart3, Receipt, UserCog
 } from "lucide-react";
 import { useState } from "react";
-import type { UserRole } from "@/types/clinic";
 
 interface NavItem {
   label: string;
   path: string;
   icon: React.ElementType;
-  roles: UserRole[];
+  roles: AppRole[];
 }
 
 const navItems: NavItem[] = [
@@ -24,6 +23,7 @@ const navItems: NavItem[] = [
   { label: "Serviços", path: "/servicos", icon: Sparkles, roles: ["admin"] },
   { label: "Pacotes", path: "/pacotes", icon: Package, roles: ["admin"] },
   { label: "BI / Análises", path: "/bi", icon: BarChart3, roles: ["admin"] },
+  { label: "Usuários", path: "/usuarios", icon: UserCog, roles: ["admin"] },
   { label: "Configurações", path: "/configuracoes", icon: Settings, roles: ["admin"] },
   // cliente
   { label: "Agendar", path: "/agendar", icon: CalendarPlus, roles: ["cliente"] },
@@ -32,13 +32,12 @@ const navItems: NavItem[] = [
 ];
 
 export default function AppSidebar() {
-  const { user, logout } = useAuth();
-  const location = useLocation();
+  const { profile, roles, logout } = useAuth();
   const [open, setOpen] = useState(false);
 
-  if (!user) return null;
+  if (!profile) return null;
 
-  const filtered = navItems.filter((i) => i.roles.includes(user.role));
+  const filtered = navItems.filter((i) => i.roles.some((r) => roles.includes(r)));
 
   const linkClass = (isActive: boolean) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -70,8 +69,8 @@ export default function AppSidebar() {
 
       <div className="border-t border-sidebar-border pt-4 mt-4">
         <div className="px-3 mb-3">
-          <p className="text-sm font-medium text-sidebar-foreground">{user.nome}</p>
-          <p className="text-xs text-sidebar-foreground/60 capitalize">{user.role}</p>
+          <p className="text-sm font-medium text-sidebar-foreground">{profile.nome || profile.email}</p>
+          <p className="text-xs text-sidebar-foreground/60 capitalize">{roles.join(", ") || "sem papel"}</p>
         </div>
         <button
           onClick={logout}
@@ -86,7 +85,6 @@ export default function AppSidebar() {
 
   return (
     <>
-      {/* Mobile toggle */}
       <button
         onClick={() => setOpen(!open)}
         className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-lg bg-card shadow-md border border-border"
@@ -95,7 +93,6 @@ export default function AppSidebar() {
         {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
-      {/* Mobile overlay */}
       {open && (
         <div
           className="fixed inset-0 z-40 bg-foreground/30 md:hidden"
@@ -103,7 +100,6 @@ export default function AppSidebar() {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 z-40 h-full transition-transform md:translate-x-0 md:static md:block ${
           open ? "translate-x-0" : "-translate-x-full"

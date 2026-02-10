@@ -126,12 +126,12 @@ function ClientDashboard() {
 }
 
 export default function Dashboard() {
-  const { user, isRole } = useAuth();
+  const { profile, isRole } = useAuth();
 
   return (
     <GlobalLayout>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Olá, {user?.nome?.split(" ")[0]} 👋</h1>
+        <h1 className="text-2xl font-bold">Olá, {profile?.nome?.split(" ")[0] || "usuário"} 👋</h1>
         <p className="text-sm text-muted-foreground mt-1">Resumo do seu dia</p>
       </div>
       {isRole("admin", "recepcao") && <AdminDashboard />}
