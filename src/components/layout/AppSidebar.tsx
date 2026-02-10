@@ -84,14 +84,14 @@ const SIDEBAR_THEME_CLASSES = ["sidebar-theme-teal", "sidebar-theme-blue", "side
 function applyHslTheme(el: HTMLElement, h: number, s: number, l: number) {
   const bgL = Math.min(l, 18);
   const vars: Record<string, string> = {
-    "--sidebar": `${h} ${Math.round(s * 0.5)}% ${bgL}%`,
-    "--sidebar-background": `${h} ${Math.round(s * 0.5)}% ${bgL}%`,
+    "--sidebar": `${h} ${s}% ${bgL}%`,
+    "--sidebar-background": `${h} ${s}% ${bgL}%`,
     "--sidebar-foreground": "0 0% 92%",
-    "--sidebar-primary": `${h} ${s}% ${Math.max(l, 50)}%`,
+    "--sidebar-primary": `${h} ${Math.min(s + 20, 100)}% ${Math.max(l, 50)}%`,
     "--sidebar-primary-foreground": "0 0% 100%",
-    "--sidebar-accent": `${h} ${Math.round(s * 0.4)}% 22%`,
+    "--sidebar-accent": `${h} ${Math.round(s * 0.8)}% 22%`,
     "--sidebar-accent-foreground": "0 0% 98%",
-    "--sidebar-border": `${h} ${Math.round(s * 0.3)}% 20%`,
+    "--sidebar-border": `${h} ${Math.round(s * 0.6)}% 20%`,
     "--sidebar-ring": `${h} ${s}% ${Math.max(l, 50)}%`,
   };
   Object.entries(vars).forEach(([k, v]) => el.style.setProperty(k, v));
@@ -110,7 +110,7 @@ export default function AppSidebar() {
 
   // Read persisted sidebar settings
   const sidebarTheme = localStorage.getItem("sidebar-theme") || "default";
-  const sidebarOpacity = Number(localStorage.getItem("sidebar-opacity") ?? 70);
+  const sidebarOpacity = Number(localStorage.getItem("sidebar-opacity") ?? 100);
   const glassMode = localStorage.getItem("sidebar-glass") === "true";
   const blurLevel = localStorage.getItem("sidebar-blur") || "forte";
 
