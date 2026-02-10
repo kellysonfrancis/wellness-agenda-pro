@@ -67,6 +67,45 @@ export function useAgendaData() {
     fetchAll();
   }, [fetchAll]);
 
+  // Realtime subscription for new appointments
+  useEffect(() => {
+    const channel = supabase
+      .channel("appointments-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "appointments" },
+        (payload) => {
+          const newAppt = payload.new as DBAppointment;
+          setAppointments((prev) => {
+            if (prev.some((a) => a.id === newAppt.id)) return prev;
+            return [...prev, newAppt];
+          });
+          toast({ title: "Novo agendamento", description: "Um novo agendamento foi criado." });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "appointments" },
+        (payload) => {
+          const updated = payload.new as DBAppointment;
+          setAppointments((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "appointments" },
+        (payload) => {
+          const deletedId = (payload.old as any).id;
+          setAppointments((prev) => prev.filter((a) => a.id !== deletedId));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const createAppointment = useCallback(async (data: {
     client_id: string;
     service_id: string;
