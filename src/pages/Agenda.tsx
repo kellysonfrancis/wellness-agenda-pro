@@ -9,6 +9,14 @@ import { useEntitlements } from "@/hooks/useEntitlements";
 import PilatesMonthlyWizard from "@/components/agenda/PilatesMonthlyWizard";
 import PackageScheduler from "@/components/agenda/PackageScheduler";
 import MakeupClassModal from "@/components/agenda/MakeupClassModal";
+import { useQuery } from "@tanstack/react-query";
+
+interface CategorySchedule {
+  categoria: string;
+  dias_semana: number[];
+  hora_inicio: number;
+  hora_fim: number;
+}
 
 const statusBorderColors: Record<AppointmentStatus, string> = {
   reservado: "border-l-warning",
@@ -101,6 +109,23 @@ export default function Agenda() {
   } = useAgendaData();
   const { plans, makeupClasses, createMakeupClass, refetch: refetchEntitlements } = useEntitlements();
 
+  const { data: categorySchedules = [] } = useQuery<CategorySchedule[]>({
+    queryKey: ["category-schedules"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("category_schedules")
+        .select("categoria, dias_semana, hora_inicio, hora_fim");
+      if (error) throw error;
+      return (data || []) as CategorySchedule[];
+    },
+  });
+
+  const scheduleMap = useMemo(() => {
+    const map: Record<string, CategorySchedule> = {};
+    categorySchedules.forEach((s) => (map[s.categoria] = s));
+    return map;
+  }, [categorySchedules]);
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [filterProfissional, setFilterProfissional] = useState("");
@@ -121,6 +146,15 @@ export default function Agenda() {
   const today = new Date();
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate.toDateString()]);
   const viewDays = viewMode === "week" ? weekDays : [currentDate];
+
+  // Check if an hour is within schedule for the filtered category
+  const isHourInSchedule = useCallback((hour: number, dayOfWeek: number) => {
+    if (!filterCategoria) return true;
+    const sched = scheduleMap[filterCategoria];
+    if (!sched) return true;
+    if (!sched.dias_semana.includes(dayOfWeek)) return false;
+    return hour >= sched.hora_inicio && hour < sched.hora_fim;
+  }, [filterCategoria, scheduleMap]);
 
   // WhatsApp confirmation statuses per appointment
   const [waStatuses, setWaStatuses] = useState<Record<string, string>>({});
@@ -503,11 +537,12 @@ export default function Agenda() {
                   {viewDays.map((day) => {
                     const events = getEventsForDayHour(day, hour);
                     const isCurrentDay = isSameDay(day, today);
+                    const inSchedule = isHourInSchedule(hour, day.getDay());
                     return (
                       <div
                         key={day.toISOString() + hour}
-                        className={`border-l border-border/50 p-0.5 min-h-[64px] cursor-pointer hover:bg-muted/20 transition-colors ${isCurrentDay ? "bg-primary/[0.02]" : ""}`}
-                        onClick={() => openNewModal(day, hour)}
+                        className={`border-l border-border/50 p-0.5 min-h-[64px] transition-colors ${inSchedule ? "cursor-pointer hover:bg-muted/20" : "bg-muted/40 cursor-not-allowed opacity-50"} ${isCurrentDay && inSchedule ? "bg-primary/[0.02]" : ""}`}
+                        onClick={() => inSchedule && openNewModal(day, hour)}
                       >
                         {events.map((evt) => {
                           const start = new Date(evt.inicio_em);
