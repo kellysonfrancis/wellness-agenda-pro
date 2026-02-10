@@ -56,6 +56,58 @@
     --chart-4: 152 60% 40%;
     --chart-5: 0 72% 51%;
   }
+
+  .dark {
+    --background: 200 20% 8%;
+    --foreground: 170 15% 92%;
+
+    --card: 200 18% 12%;
+    --card-foreground: 170 15% 92%;
+
+    --popover: 200 18% 12%;
+    --popover-foreground: 170 15% 92%;
+
+    --primary: 172 60% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 172 20% 18%;
+    --secondary-foreground: 172 40% 70%;
+
+    --muted: 200 15% 16%;
+    --muted-foreground: 200 10% 55%;
+
+    --accent: 172 30% 20%;
+    --accent-foreground: 172 50% 75%;
+
+    --destructive: 0 62% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 15% 20%;
+    --input: 200 15% 20%;
+    --ring: 172 60% 42%;
+
+    --sidebar-background: 200 20% 6%;
+    --sidebar-foreground: 170 20% 85%;
+    --sidebar-primary: 172 60% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 172 25% 16%;
+    --sidebar-accent-foreground: 170 20% 85%;
+    --sidebar-border: 200 15% 16%;
+    --sidebar-ring: 172 60% 50%;
+
+    --success: 152 55% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 85% 55%;
+    --warning-foreground: 0 0% 100%;
+    --info: 205 75% 55%;
+    --info-foreground: 0 0% 100%;
+
+    --chart-1: 172 60% 42%;
+    --chart-2: 38 85% 55%;
+    --chart-3: 205 75% 55%;
+    --chart-4: 152 55% 45%;
+    --chart-5: 0 62% 55%;
+  }
 }
 
 @layer base {
@@ -75,6 +127,10 @@
 
 @layer utilities {
   .stat-card {
-    @apply rounded-xl bg-card p-5 shadow-sm border border-border/60 transition-shadow hover:shadow-md;
+    @apply rounded-xl bg-card p-5 shadow-sm border border-border/60 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
   }
 }
