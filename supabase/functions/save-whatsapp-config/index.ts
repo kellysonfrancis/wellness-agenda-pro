@@ -39,36 +39,26 @@ serve(async (req) => {
     const body = await req.json();
     const { line_id, label, categorias, access_token, phone_number_id, reminder_enabled, confirm_enabled, receipt_enabled } = body;
 
-    if (!access_token || !phone_number_id || !line_id) {
-      return new Response(JSON.stringify({ error: "Token, Phone Number ID e line_id são obrigatórios" }), {
+    if (!access_token || !phone_number_id || !label) {
+      return new Response(JSON.stringify({ error: "Token, Phone Number ID e nome da linha são obrigatórios" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-    // Use line_id as suffix to support multiple lines
-    const suffix = line_id.substring(0, 8);
-    await adminClient.rpc("set_secret" as any, { name: `WA_TOKEN_${suffix}`, value: access_token });
-    await adminClient.rpc("set_secret" as any, { name: `WA_PHONE_${suffix}`, value: phone_number_id });
-    await adminClient.rpc("set_secret" as any, { name: `WA_CFG_${suffix}`, value: JSON.stringify({
+    // Upsert into whatsapp_lines table
+    const { error: upsertError } = await supabase.from("whatsapp_lines").upsert({
+      id: line_id,
       label,
-      categorias,
-      reminder_enabled,
-      confirm_enabled,
-      receipt_enabled,
-    })});
+      categorias: categorias || [],
+      access_token,
+      phone_number_id,
+      reminder_enabled: reminder_enabled ?? true,
+      confirm_enabled: confirm_enabled ?? true,
+      receipt_enabled: receipt_enabled ?? true,
+    }, { onConflict: "id" });
 
-    // Also store a manifest of all line IDs
-    const existingManifest = await adminClient.rpc("read_secret" as any, { name: "WA_LINES_MANIFEST" }).catch(() => null);
-    let lineIds: string[] = [];
-    try {
-      if (existingManifest?.data) lineIds = JSON.parse(existingManifest.data);
-    } catch {}
-    if (!lineIds.includes(suffix)) lineIds.push(suffix);
-    await adminClient.rpc("set_secret" as any, { name: "WA_LINES_MANIFEST", value: JSON.stringify(lineIds) });
+    if (upsertError) throw upsertError;
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

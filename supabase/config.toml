@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.save-whatsapp-config]
 verify_jwt = false
+
+[functions.send-whatsapp]
+verify_jwt = false
