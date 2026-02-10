@@ -3,6 +3,7 @@ import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loade
 import LandingConfigEditor from "@/components/landing/LandingConfigEditor";
 import TestimonialsEditor from "@/components/landing/TestimonialsEditor";
 import CategorySchedulesEditor from "@/components/agenda/CategorySchedulesEditor";
+import HolidaysEditor from "@/components/agenda/HolidaysEditor";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -427,6 +428,7 @@ export default function Configuracoes() {
         </div>
 
         <CategorySchedulesEditor />
+        <HolidaysEditor />
 
         <button className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
           Salvar Configurações

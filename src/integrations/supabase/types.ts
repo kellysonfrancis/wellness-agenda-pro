@@ -236,6 +236,7 @@ export type Database = {
           hora_fim: number
           hora_inicio: number
           id: string
+          pausas: Json
           updated_at: string
         }
         Insert: {
@@ -245,6 +246,7 @@ export type Database = {
           hora_fim?: number
           hora_inicio?: number
           id?: string
+          pausas?: Json
           updated_at?: string
         }
         Update: {
@@ -254,6 +256,7 @@ export type Database = {
           hora_fim?: number
           hora_inicio?: number
           id?: string
+          pausas?: Json
           updated_at?: string
         }
         Relationships: []
@@ -479,6 +482,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      holidays: {
+        Row: {
+          created_at: string
+          data: string
+          descricao: string
+          id: string
+          recorrente: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          descricao?: string
+          id?: string
+          recorrente?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          descricao?: string
+          id?: string
+          recorrente?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
       landing_config: {
         Row: {
