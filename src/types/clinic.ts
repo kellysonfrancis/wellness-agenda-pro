@@ -111,6 +111,7 @@ export interface Payment {
   clientId: string;
   appointmentId?: string | null;
   entitlementId?: string | null;
+  contaDestinoId?: string | null;
   valorTotal: number;
   valorPago: number;
   status: PaymentStatus;
@@ -144,7 +145,36 @@ export interface Expense {
   dataVencimento: string;
   pago: boolean;
   pagoEm?: string | null;
+  contaOrigemId?: string | null;
   recorrente: boolean;
+  criadoEm: string;
+}
+
+export type BankAccountType = "corrente" | "caixa" | "digital" | "maquininha";
+
+export interface BankAccount {
+  id: string;
+  nome: string;
+  tipo: BankAccountType;
+  banco?: string | null;
+  saldoInicial: number;
+  saldoAtual: number;
+  ativo: boolean;
+  criadoEm: string;
+}
+
+export type TransactionType = "entrada" | "saida" | "transferencia";
+
+export interface AccountTransaction {
+  id: string;
+  contaOrigemId?: string | null;
+  contaDestinoId?: string | null;
+  tipo: TransactionType;
+  valor: number;
+  descricao: string;
+  referencia?: string | null;
+  paymentId?: string | null;
+  expenseId?: string | null;
   criadoEm: string;
 }
 
