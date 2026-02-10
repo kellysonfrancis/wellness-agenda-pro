@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { X, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { validateSchedule, type CategorySchedule } from "@/utils/scheduleValidation";
 
 interface Props {
   open: boolean;
@@ -19,11 +20,12 @@ interface Props {
   professionals: { id: string; nome_exibicao: string; especialidades: string[] }[];
   existingAppointments: { inicio_em: string; fim_em: string; service_id: string }[];
   originalAppointment: { service_id: string; profissional_id: string } | null;
+  categorySchedules: Record<string, CategorySchedule>;
   onScheduled: () => void;
 }
 
 export default function MakeupClassModal({
-  open, onClose, makeupClass, clientName, services, professionals, existingAppointments, originalAppointment, onScheduled
+  open, onClose, makeupClass, clientName, services, professionals, existingAppointments, originalAppointment, categorySchedules, onScheduled
 }: Props) {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -64,6 +66,16 @@ export default function MakeupClassModal({
     }
     if (isFull) {
       toast({ title: "Horário lotado", variant: "destructive" });
+      return;
+    }
+
+    // Validate category schedule
+    const [h0, m0] = time.split(":").map(Number);
+    const [y0, mo0, d0] = date.split("-").map(Number);
+    const checkDate = new Date(y0, mo0 - 1, d0, h0, m0);
+    const schedCheck = validateSchedule(checkDate, "pilates", categorySchedules);
+    if (!schedCheck.valid) {
+      toast({ title: "Horário não permitido", description: schedCheck.message, variant: "destructive" });
       return;
     }
 
@@ -113,7 +125,7 @@ export default function MakeupClassModal({
 
     setSaving(false);
     onClose();
-  }, [makeupClass, date, time, serviceId, profissionalId, isExpired, isFull, pilatesServices, clientName, onScheduled, onClose]);
+  }, [makeupClass, date, time, serviceId, profissionalId, isExpired, isFull, pilatesServices, clientName, onScheduled, onClose, categorySchedules]);
 
   if (!open || !makeupClass) return null;
 
