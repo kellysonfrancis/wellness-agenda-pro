@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import {
   Calendar, DollarSign, AlertCircle, TrendingUp,
-  Clock, CalendarCheck, Package, Loader2
+  Clock, CalendarCheck, Package, Loader2, Users, Percent, Ban
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,24 +20,27 @@ interface DBAppointment {
 interface DBPayment {
   id: string;
   valor_pago: number;
+  valor_total: number;
   status: string;
   created_at: string;
+  client_id: string;
 }
 
 interface DBClient { id: string; nome: string }
-interface DBService { id: string; nome: string }
+interface DBService { id: string; nome: string; duracao_min: number }
 interface DBProfessional { id: string; nome_exibicao: string; user_id: string | null }
 interface DBEntitlement { id: string; client_id: string; status: string }
 
-function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: string | number; color?: string }) {
+function StatCard({ icon: Icon, label, value, subtitle, color }: { icon: React.ElementType; label: string; value: string | number; subtitle?: string; color?: string }) {
   return (
-    <div className="stat-card flex items-start gap-4">
+    <div className="bg-card rounded-xl border border-border shadow-sm p-5 flex items-start gap-4">
       <div className={`p-2.5 rounded-lg ${color ?? "bg-secondary text-secondary-foreground"}`}>
         <Icon className="h-5 w-5" />
       </div>
-      <div>
+      <div className="min-w-0">
         <p className="text-sm text-muted-foreground">{label}</p>
         <p className="text-2xl font-bold text-foreground mt-0.5">{value}</p>
+        {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -56,9 +59,9 @@ function useDashboardData() {
     setLoading(true);
     const [apptRes, payRes, cliRes, svcRes, profRes, entRes] = await Promise.all([
       supabase.from("appointments").select("id, client_id, service_id, profissional_id, inicio_em, fim_em, status"),
-      supabase.from("payments").select("id, valor_pago, status, created_at"),
+      supabase.from("payments").select("id, valor_pago, valor_total, status, created_at, client_id"),
       supabase.from("clients").select("id, nome"),
-      supabase.from("services").select("id, nome"),
+      supabase.from("services").select("id, nome, duracao_min"),
       supabase.from("professionals").select("id, nome_exibicao, user_id"),
       supabase.from("client_entitlements").select("id, client_id, status"),
     ]);
@@ -73,6 +76,16 @@ function useDashboardData() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // Realtime: re-fetch on changes to key tables
+  useEffect(() => {
+    const channel = supabase
+      .channel("dashboard-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => fetchAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => fetchAll())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchAll]);
+
   const getClientName = useCallback((id: string) => clients.find((c) => c.id === id)?.nome ?? "—", [clients]);
   const getServiceName = useCallback((id: string) => services.find((s) => s.id === id)?.nome ?? "—", [services]);
   const getProfName = useCallback((id: string) => professionals.find((p) => p.id === id)?.nome_exibicao ?? "—", [professionals]);
@@ -81,32 +94,121 @@ function useDashboardData() {
 }
 
 function AdminDashboard({ data }: { data: ReturnType<typeof useDashboardData> }) {
-  const { appointments, payments, getClientName, getServiceName, getProfName } = data;
+  const { appointments, payments, professionals, getClientName, getServiceName, getProfName } = data;
 
   const todayAppts = useMemo(() => {
     const today = new Date().toDateString();
     return appointments.filter((a) => new Date(a.inicio_em).toDateString() === today);
   }, [appointments]);
 
-  const pendingPayments = useMemo(() => payments.filter((p) => p.status === "pendente" || p.status === "parcial"), [payments]);
-  const unconfirmed = useMemo(() => todayAppts.filter((a) => a.status === "reservado"), [todayAppts]);
+  const now = new Date();
 
+  // === KPI 1: Faturamento do Mês (pagamentos pagos) ===
   const monthRevenue = useMemo(() => {
-    const now = new Date();
     return payments
-      .filter((p) => { const d = new Date(p.created_at); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
+      .filter((p) => {
+        if (p.status !== "pago") return false;
+        const d = new Date(p.created_at);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      })
       .reduce((s, p) => s + Number(p.valor_pago), 0);
   }, [payments]);
 
+  // === KPI 2: Agendamentos do Dia (por status) ===
+  const todayConcluidos = useMemo(() => todayAppts.filter((a) => a.status === "concluido").length, [todayAppts]);
+  const todayPendentes = useMemo(() => todayAppts.filter((a) => a.status === "reservado" || a.status === "confirmado" || a.status === "em_atendimento").length, [todayAppts]);
+
+  // === KPI 3: Taxa de Ocupação (mês atual) ===
+  const occupancyRate = useMemo(() => {
+    const activeProfessionals = professionals.length;
+    if (activeProfessionals === 0) return 0;
+
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // Working days in month (Mon-Sat)
+    let workingDays = 0;
+    for (let d = new Date(monthStart); d <= monthEnd; d.setDate(d.getDate() + 1)) {
+      if (d.getDay() !== 0) workingDays++;
+    }
+
+    // Slots per prof per day: 8h / 50min ≈ 9 slots
+    const slotsPerDay = 9;
+    const totalSlots = activeProfessionals * workingDays * slotsPerDay;
+
+    const monthAppts = appointments.filter((a) => {
+      const d = new Date(a.inicio_em);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && a.status !== "cancelado";
+    });
+
+    return totalSlots > 0 ? Math.min(Math.round((monthAppts.length / totalSlots) * 100), 100) : 0;
+  }, [appointments, professionals]);
+
+  // === KPI 4: Inadimplência ===
+  const inadimplencia = useMemo(() => {
+    const overdue = payments.filter((p) => p.status === "pendente" || p.status === "parcial");
+    const total = overdue.reduce((s, p) => s + (Number(p.valor_total) - Number(p.valor_pago)), 0);
+    return { count: overdue.length, total };
+  }, [payments]);
+
+  // === KPI 5: Faturamento do Mês Anterior (para comparação) ===
+  const lastMonthRevenue = useMemo(() => {
+    const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const lastYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    return payments
+      .filter((p) => {
+        if (p.status !== "pago") return false;
+        const d = new Date(p.created_at);
+        return d.getMonth() === lastMonth && d.getFullYear() === lastYear;
+      })
+      .reduce((s, p) => s + Number(p.valor_pago), 0);
+  }, [payments]);
+
+  const revenueGrowth = lastMonthRevenue > 0 ? Math.round(((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : null;
+
+  const unconfirmed = useMemo(() => todayAppts.filter((a) => a.status === "reservado"), [todayAppts]);
+
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={Calendar} label="Atendimentos Hoje" value={todayAppts.length} color="bg-primary/10 text-primary" />
-        <StatCard icon={DollarSign} label="Pendências" value={pendingPayments.length} color="bg-warning/10 text-warning" />
-        <StatCard icon={AlertCircle} label="Não Confirmados" value={unconfirmed.length} color="bg-destructive/10 text-destructive" />
-        <StatCard icon={TrendingUp} label="Faturamento Mês" value={`R$ ${monthRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} color="bg-success/10 text-success" />
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard
+          icon={DollarSign}
+          label="Faturamento do Mês"
+          value={`R$ ${monthRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+          subtitle={revenueGrowth !== null ? `${revenueGrowth >= 0 ? "+" : ""}${revenueGrowth}% vs mês anterior` : "Primeiro mês"}
+          color="bg-success/10 text-success"
+        />
+        <StatCard
+          icon={Calendar}
+          label="Atendimentos Hoje"
+          value={todayAppts.length}
+          subtitle={`${todayConcluidos} concluídos · ${todayPendentes} pendentes`}
+          color="bg-primary/10 text-primary"
+        />
+        <StatCard
+          icon={Percent}
+          label="Taxa de Ocupação"
+          value={`${occupancyRate}%`}
+          subtitle={`${professionals.length} profissionais ativos`}
+          color="bg-info/10 text-info"
+        />
+        <StatCard
+          icon={Ban}
+          label="Inadimplência"
+          value={inadimplencia.count}
+          subtitle={`R$ ${inadimplencia.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em aberto`}
+          color="bg-destructive/10 text-destructive"
+        />
       </div>
 
+      {/* Secondary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <StatCard icon={AlertCircle} label="Não Confirmados Hoje" value={unconfirmed.length} color="bg-warning/10 text-warning" />
+        <StatCard icon={Users} label="Total de Clientes" value={data.clients.length} color="bg-secondary text-secondary-foreground" />
+      </div>
+
+      {/* Today's schedule */}
       <div className="bg-card rounded-xl border border-border shadow-sm">
         <div className="p-5 border-b border-border">
           <h2 className="text-lg font-semibold">Agenda de Hoje</h2>
@@ -125,8 +227,11 @@ function AdminDashboard({ data }: { data: ReturnType<typeof useDashboardData> })
                   </div>
                 </div>
                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${
-                  a.status === "confirmado" ? "bg-success/10 text-success" :
+                  a.status === "concluido" ? "bg-success/10 text-success" :
+                  a.status === "confirmado" ? "bg-primary/10 text-primary" :
+                  a.status === "em_atendimento" ? "bg-info/10 text-info" :
                   a.status === "reservado" ? "bg-warning/10 text-warning" :
+                  a.status === "faltou" ? "bg-destructive/10 text-destructive" :
                   "bg-muted text-muted-foreground"
                 }`}>
                   {a.status}
