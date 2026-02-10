@@ -315,6 +315,64 @@ export type Database = {
         }
         Relationships: []
       }
+      clinical_records: {
+        Row: {
+          appointment_id: string | null
+          client_id: string
+          conteudo: string
+          created_at: string
+          data_registro: string
+          id: string
+          profissional_id: string
+          tipo: Database["public"]["Enums"]["clinical_record_type"]
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          client_id: string
+          conteudo: string
+          created_at?: string
+          data_registro?: string
+          id?: string
+          profissional_id: string
+          tipo?: Database["public"]["Enums"]["clinical_record_type"]
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          client_id?: string
+          conteudo?: string
+          created_at?: string
+          data_registro?: string
+          id?: string
+          profissional_id?: string
+          tipo?: Database["public"]["Enums"]["clinical_record_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_records_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_records_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_records_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commission_rates: {
         Row: {
           categoria: string
@@ -826,6 +884,7 @@ export type Database = {
         | "cancelado"
       bank_account_type: "corrente" | "caixa" | "digital" | "maquininha"
       categoria: "pilates" | "fisioterapia" | "estetica"
+      clinical_record_type: "anamnese" | "evolucao" | "observacao" | "alta"
       expense_category:
         | "aluguel"
         | "salarios"
@@ -983,6 +1042,7 @@ export const Constants = {
       ],
       bank_account_type: ["corrente", "caixa", "digital", "maquininha"],
       categoria: ["pilates", "fisioterapia", "estetica"],
+      clinical_record_type: ["anamnese", "evolucao", "observacao", "alta"],
       expense_category: [
         "aluguel",
         "salarios",
