@@ -450,6 +450,48 @@ export type Database = {
           },
         ]
       }
+      landing_config: {
+        Row: {
+          banner_url: string | null
+          cor_fundo: string | null
+          cor_primaria: string | null
+          cor_texto: string | null
+          created_at: string
+          id: string
+          link_instagram: string | null
+          logo_url: string | null
+          nome_clinica: string
+          subtitulo: string | null
+          updated_at: string
+        }
+        Insert: {
+          banner_url?: string | null
+          cor_fundo?: string | null
+          cor_primaria?: string | null
+          cor_texto?: string | null
+          created_at?: string
+          id?: string
+          link_instagram?: string | null
+          logo_url?: string | null
+          nome_clinica?: string
+          subtitulo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          banner_url?: string | null
+          cor_fundo?: string | null
+          cor_primaria?: string | null
+          cor_texto?: string | null
+          created_at?: string
+          id?: string
+          link_instagram?: string | null
+          logo_url?: string | null
+          nome_clinica?: string
+          subtitulo?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       makeup_classes: {
         Row: {
           client_id: string

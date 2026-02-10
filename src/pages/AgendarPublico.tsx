@@ -20,6 +20,17 @@ interface ProfessionalOption {
 
 type Step = "service" | "professional" | "datetime" | "info" | "success";
 
+interface LandingConfig {
+  nome_clinica: string;
+  subtitulo: string;
+  logo_url: string | null;
+  banner_url: string | null;
+  cor_primaria: string;
+  cor_fundo: string;
+  cor_texto: string;
+  link_instagram: string | null;
+}
+
 function phoneMask(value: string) {
   return value
     .replace(/\D/g, "")
@@ -39,6 +50,7 @@ export default function AgendarPublico() {
   const [loading, setLoading] = useState(true);
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [professionals, setProfessionals] = useState<ProfessionalOption[]>([]);
+  const [config, setConfig] = useState<LandingConfig | null>(null);
 
   const [selectedService, setSelectedService] = useState<ServiceOption | null>(null);
   const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalOption | null>(null);
@@ -54,17 +66,27 @@ export default function AgendarPublico() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchOptions = async () => {
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-booking?action=options`;
-      const res = await fetch(url, {
-        headers: { "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-      });
-      const json = await res.json();
-      setServices(json.services ?? []);
-      setProfessionals(json.professionals ?? []);
+    const fetchAll = async () => {
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const headers = { "apikey": apikey };
+
+      const [optionsRes, configRes] = await Promise.all([
+        fetch(`${baseUrl}/functions/v1/public-booking?action=options`, { headers }),
+        fetch(`${baseUrl}/rest/v1/landing_config?select=*&limit=1`, { headers }),
+      ]);
+
+      const optionsJson = await optionsRes.json();
+      setServices(optionsJson.services ?? []);
+      setProfessionals(optionsJson.professionals ?? []);
+
+      const configJson = await configRes.json();
+      if (Array.isArray(configJson) && configJson.length > 0) {
+        setConfig(configJson[0]);
+      }
       setLoading(false);
     };
-    fetchOptions();
+    fetchAll();
   }, []);
 
   const filteredProfessionals = professionals.filter((p) =>
@@ -123,6 +145,10 @@ export default function AgendarPublico() {
     setSubmitting(false);
   };
 
+  const corPrimaria = config?.cor_primaria || "#0d7377";
+  const corFundo = config?.cor_fundo || undefined;
+  const corTexto = config?.cor_texto || undefined;
+
   // Generate next 14 days
   const today = startOfDay(new Date());
   const availableDates = Array.from({ length: 14 }, (_, i) => {
@@ -139,12 +165,22 @@ export default function AgendarPublico() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ backgroundColor: corFundo, color: corTexto }}>
       {/* Header */}
-      <div className="bg-primary text-primary-foreground py-8 px-4">
-        <div className="max-w-lg mx-auto text-center">
-          <h1 className="text-2xl font-bold mb-1">Agende sua Sessão</h1>
-          <p className="text-sm opacity-90">Pilates · Fisioterapia · Estética</p>
+      <div className="relative py-8 px-4 overflow-hidden" style={{ backgroundColor: corPrimaria }}>
+        {config?.banner_url && (
+          <img src={config.banner_url} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" />
+        )}
+        <div className="max-w-lg mx-auto text-center relative z-10">
+          {config?.logo_url && (
+            <img src={config.logo_url} alt="Logo" className="h-14 mx-auto mb-3 object-contain" />
+          )}
+          <h1 className="text-2xl font-bold mb-1" style={{ color: "#fff" }}>
+            {config?.nome_clinica || "Agende sua Sessão"}
+          </h1>
+          <p className="text-sm opacity-90" style={{ color: "#fff" }}>
+            {config?.subtitulo || "Pilates · Fisioterapia · Estética"}
+          </p>
         </div>
       </div>
 
