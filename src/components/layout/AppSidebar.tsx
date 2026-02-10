@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Calendar, Users, DollarSign, Sparkles,
   Package, Settings, CalendarPlus, CalendarCheck, ShoppingBag,
   LogOut, Menu, X, BarChart3, Receipt, UserCog, Tags, Stethoscope, HandCoins, ShoppingCart, AlertTriangle, Activity, UserX, TrendingUp, ClipboardList, ListOrdered,
-  Moon, Sun
+  Moon, Sun, MessageSquare
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -36,6 +36,7 @@ const navItems: NavItem[] = [
   { label: "Projeção Receita", path: "/projecao-receita", icon: TrendingUp, roles: ["admin"] },
   { label: "Produtividade", path: "/produtividade", icon: BarChart3, roles: ["admin"] },
   { label: "Usuários", path: "/usuarios", icon: UserCog, roles: ["admin"] },
+  { label: "WhatsApp Log", path: "/whatsapp-historico", icon: MessageSquare, roles: ["admin"] },
   { label: "Configurações", path: "/configuracoes", icon: Settings, roles: ["admin"] },
   // cliente
   { label: "Agendar", path: "/agendar", icon: CalendarPlus, roles: ["cliente"] },
