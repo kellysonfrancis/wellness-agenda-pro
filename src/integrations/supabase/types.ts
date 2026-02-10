@@ -81,6 +81,39 @@ export type Database = {
           },
         ]
       }
+      categories: {
+        Row: {
+          ativo: boolean
+          cor: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cor?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cor?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           created_at: string
