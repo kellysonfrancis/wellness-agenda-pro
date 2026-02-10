@@ -931,6 +931,96 @@ export type Database = {
           },
         ]
       }
+      whatsapp_lines: {
+        Row: {
+          access_token: string
+          categorias: string[]
+          confirm_enabled: boolean
+          created_at: string
+          id: string
+          label: string
+          phone_number_id: string
+          receipt_enabled: boolean
+          reminder_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          categorias?: string[]
+          confirm_enabled?: boolean
+          created_at?: string
+          id?: string
+          label: string
+          phone_number_id: string
+          receipt_enabled?: boolean
+          reminder_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          categorias?: string[]
+          confirm_enabled?: boolean
+          created_at?: string
+          id?: string
+          label?: string
+          phone_number_id?: string
+          receipt_enabled?: boolean
+          reminder_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      whatsapp_log: {
+        Row: {
+          appointment_id: string | null
+          created_at: string
+          destinatario: string
+          erro: string | null
+          id: string
+          line_id: string | null
+          meta_message_id: string | null
+          status: string
+          tipo: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string
+          destinatario: string
+          erro?: string | null
+          id?: string
+          line_id?: string | null
+          meta_message_id?: string | null
+          status?: string
+          tipo: string
+        }
+        Update: {
+          appointment_id?: string | null
+          created_at?: string
+          destinatario?: string
+          erro?: string | null
+          id?: string
+          line_id?: string | null
+          meta_message_id?: string | null
+          status?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_log_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_log_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
