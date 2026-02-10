@@ -10,7 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { DollarSign, Plus, Check, Pencil, TrendingUp, Users, Receipt, Filter, X } from "lucide-react";
+import { DollarSign, Plus, Check, Pencil, TrendingUp, Users, Receipt, Filter, X, FileDown, FileSpreadsheet } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 const catLabel: Record<string, string> = { pilates: "Pilates", fisioterapia: "Fisioterapia", estetica: "Estética" };
 
@@ -177,6 +180,55 @@ export default function Comissoes() {
     return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [professionals, profiles]);
 
+  const fmt = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const buildRows = () =>
+    filteredSales.map((s) => ({
+      data: new Date(s.created_at).toLocaleDateString("pt-BR"),
+      vendedor: getSellerName(s.seller_id),
+      tipo: s.seller_type === "profissional" ? "Profissional" : "Recepção",
+      cliente: getClientName(s.client_id),
+      categoria: catLabel[s.categoria] || s.categoria,
+      valorVenda: Number(s.valor_venda),
+      comissao: Number(s.valor_comissao),
+      percentual: Number(s.percentual_comissao),
+      status: s.pago ? "Pago" : "Pendente",
+    }));
+
+  const handleExportExcel = () => {
+    const rows = buildRows();
+    const ws = XLSX.utils.json_to_sheet(rows.map((r) => ({
+      Data: r.data, Vendedor: r.vendedor, Tipo: r.tipo, Cliente: r.cliente,
+      Categoria: r.categoria, "Valor Venda": r.valorVenda, "Comissão": r.comissao,
+      "%": r.percentual, Status: r.status,
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Comissões");
+    XLSX.writeFile(wb, `Comissoes_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    toast({ title: "Excel exportado!" });
+  };
+
+  const handleExportPDF = () => {
+    const rows = buildRows();
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(14);
+    doc.text("Relatório de Comissões", 14, 15);
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(`Gerado em ${new Date().toLocaleDateString("pt-BR")} • ${rows.length} registros • Total: R$ ${fmt(totalSales)} • Comissões: R$ ${fmt(totalPending + totalPaid)}`, 14, 21);
+    doc.setTextColor(0);
+    autoTable(doc, {
+      startY: 26,
+      head: [["Data", "Vendedor", "Tipo", "Cliente", "Categoria", "Valor Venda", "Comissão", "%", "Status"]],
+      body: rows.map((r) => [r.data, r.vendedor, r.tipo, r.cliente, r.categoria, `R$ ${fmt(r.valorVenda)}`, `R$ ${fmt(r.comissao)}`, `${r.percentual}%`, r.status]),
+      theme: "grid",
+      headStyles: { fillColor: [30, 100, 80] },
+      styles: { fontSize: 8 },
+    });
+    doc.save(`Comissoes_${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast({ title: "PDF exportado!" });
+  };
+
   return (
     <GlobalLayout>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -285,11 +337,19 @@ export default function Comissoes() {
         <div className="flex items-center gap-2 mb-3">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium">Filtros</span>
-          {hasFilters && (
-            <button onClick={clearFilters} className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              <X className="h-3 w-3" /> Limpar
-            </button>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {hasFilters && (
+              <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-3 w-3" /> Limpar
+              </button>
+            )}
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportExcel}>
+              <FileSpreadsheet className="h-3 w-3 mr-1" /> Excel
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportPDF}>
+              <FileDown className="h-3 w-3 mr-1" /> PDF
+            </Button>
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
