@@ -31,6 +31,7 @@ import Prontuario from "./pages/Prontuario";
 import ListaEspera from "./pages/ListaEspera";
 import Produtividade from "./pages/Produtividade";
 import WhatsAppHistorico from "./pages/WhatsAppHistorico";
+import AgendarPublico from "./pages/AgendarPublico";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/agendar-publico" element={<AgendarPublico />} />
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/agenda" element={<ProtectedRoute roles={["admin", "recepcao", "profissional"]}><Agenda /></ProtectedRoute>} />
