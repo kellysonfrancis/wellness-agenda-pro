@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import type { PeriodFilter, CategoryFilter } from "./BIFilters";
-import type { Payment, Appointment } from "@/types/clinic";
+import type { Payment, Appointment, Expense } from "@/types/clinic";
 import {
   mockPayments, mockClients, mockAppointments,
-  mockEntitlements, mockServices, mockPlans, getClientName,
+  mockEntitlements, mockServices, mockPlans, mockExpenses, getClientName,
 } from "@/data/mockData";
 
 const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -122,6 +122,48 @@ export function useBIData(period: PeriodFilter, category: CategoryFilter) {
     const avgTicket = totalRevenue / (paidCount || 1);
     const activeClients = new Set(filteredAppts.map((a) => a.clientId)).size;
 
-    return { revenue, catRev, payStatus, funnel, ltv, totalRevenue, avgTicket, activeClients };
+    // Expenses
+    let filteredExpenses = mockExpenses as Expense[];
+    if (cutoff) filteredExpenses = filteredExpenses.filter((e) => new Date(e.criadoEm) >= cutoff);
+
+    const totalExpenses = filteredExpenses.reduce((s, e) => s + e.valor, 0);
+    const totalFixedExpenses = filteredExpenses.filter((e) => e.tipo === "fixa").reduce((s, e) => s + e.valor, 0);
+    const totalVariableExpenses = filteredExpenses.filter((e) => e.tipo === "variavel").reduce((s, e) => s + e.valor, 0);
+    const profit = totalRevenue - totalExpenses;
+    const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
+
+    // Revenue vs Expenses by month
+    const expenseMap: Record<string, number> = {};
+    months.forEach((m) => (expenseMap[m] = 0));
+    filteredExpenses.forEach((e) => {
+      const m = months[new Date(e.criadoEm).getMonth()];
+      expenseMap[m] = (expenseMap[m] || 0) + e.valor;
+    });
+    const revenueVsExpenses = months.map((m) => ({
+      mes: m,
+      receita: revenueMap[m],
+      despesas: expenseMap[m],
+      lucro: revenueMap[m] - expenseMap[m],
+    }));
+
+    // Expense by category
+    const expCatLabel: Record<string, string> = {
+      aluguel: "Aluguel", salarios: "Salários", materiais: "Materiais",
+      equipamentos: "Equipamentos", marketing: "Marketing",
+      manutencao: "Manutenção", impostos: "Impostos", outros: "Outros",
+    };
+    const expByCat: Record<string, number> = {};
+    filteredExpenses.forEach((e) => {
+      expByCat[e.categoria] = (expByCat[e.categoria] || 0) + e.valor;
+    });
+    const expenseByCategory = Object.entries(expByCat).map(([name, value]) => ({
+      name: expCatLabel[name] || name, value,
+    }));
+
+    return {
+      revenue, catRev, payStatus, funnel, ltv, totalRevenue, avgTicket, activeClients,
+      totalExpenses, totalFixedExpenses, totalVariableExpenses, profit, profitMargin,
+      revenueVsExpenses, expenseByCategory,
+    };
   }, [period, category]);
 }
