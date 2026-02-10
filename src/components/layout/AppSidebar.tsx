@@ -33,6 +33,7 @@ const navItems: NavItem[] = [
   { label: "Taxa de Ocupação", path: "/taxa-ocupacao", icon: Activity, roles: ["admin"] },
   { label: "Churn", path: "/churn", icon: UserX, roles: ["admin"] },
   { label: "Projeção Receita", path: "/projecao-receita", icon: TrendingUp, roles: ["admin"] },
+  { label: "Produtividade", path: "/produtividade", icon: BarChart3, roles: ["admin"] },
   { label: "Usuários", path: "/usuarios", icon: UserCog, roles: ["admin"] },
   { label: "Configurações", path: "/configuracoes", icon: Settings, roles: ["admin"] },
   // cliente

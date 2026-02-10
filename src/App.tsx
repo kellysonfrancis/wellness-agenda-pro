@@ -29,6 +29,7 @@ import Churn from "./pages/Churn";
 import ProjecaoReceita from "./pages/ProjecaoReceita";
 import Prontuario from "./pages/Prontuario";
 import ListaEspera from "./pages/ListaEspera";
+import Produtividade from "./pages/Produtividade";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,7 @@ const App = () => (
             <Route path="/projecao-receita" element={<ProtectedRoute roles={["admin"]}><ProjecaoReceita /></ProtectedRoute>} />
             <Route path="/prontuario" element={<ProtectedRoute roles={["admin", "profissional"]}><Prontuario /></ProtectedRoute>} />
             <Route path="/lista-espera" element={<ProtectedRoute roles={["admin", "recepcao"]}><ListaEspera /></ProtectedRoute>} />
+            <Route path="/produtividade" element={<ProtectedRoute roles={["admin"]}><Produtividade /></ProtectedRoute>} />
             <Route path="/agendar" element={<ProtectedRoute roles={["cliente"]}><ClientBooking /></ProtectedRoute>} />
             <Route path="/meus-agendamentos" element={<ProtectedRoute roles={["cliente"]}><ClientAppointments /></ProtectedRoute>} />
             <Route path="/meus-pacotes" element={<ProtectedRoute roles={["cliente"]}><ClientPackages /></ProtectedRoute>} />
