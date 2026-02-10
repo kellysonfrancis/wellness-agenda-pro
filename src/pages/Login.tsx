@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { LogIn, UserPlus, Loader2 } from "lucide-react";
 
@@ -90,7 +91,15 @@ export default function Login() {
       if (err) {
         setError(err);
       } else {
-        navigate("/dashboard");
+        // Check if user has any roles assigned
+        const { data: roles } = await supabase.rpc("get_my_roles");
+        if (!roles || roles.length === 0) {
+          // No roles = pending approval
+          await supabase.auth.signOut();
+          setError("Sua conta está pendente de aprovação por um administrador. Aguarde a validação.");
+        } else {
+          navigate("/dashboard");
+        }
       }
     }
     setSubmitting(false);
