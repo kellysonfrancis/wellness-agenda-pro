@@ -87,6 +87,7 @@ export type Database = {
           client_id: string
           created_at: string
           created_by: string | null
+          entitlement_id: string | null
           fim_em: string
           id: string
           inicio_em: string
@@ -101,6 +102,7 @@ export type Database = {
           client_id: string
           created_at?: string
           created_by?: string | null
+          entitlement_id?: string | null
           fim_em: string
           id?: string
           inicio_em: string
@@ -115,6 +117,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           created_by?: string | null
+          entitlement_id?: string | null
           fim_em?: string
           id?: string
           inicio_em?: string
@@ -131,6 +134,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_entitlement_id_fkey"
+            columns: ["entitlement_id"]
+            isOneToOne: false
+            referencedRelation: "client_entitlements"
             referencedColumns: ["id"]
           },
           {
@@ -218,6 +228,60 @@ export type Database = {
         }
         Relationships: []
       }
+      client_entitlements: {
+        Row: {
+          client_id: string
+          created_at: string
+          expira_em: string | null
+          id: string
+          inicio_em: string
+          observacoes: string | null
+          product_plan_id: string
+          saldo_creditos: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          expira_em?: string | null
+          id?: string
+          inicio_em?: string
+          observacoes?: string | null
+          product_plan_id: string
+          saldo_creditos?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          expira_em?: string | null
+          id?: string
+          inicio_em?: string
+          observacoes?: string | null
+          product_plan_id?: string
+          saldo_creditos?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_entitlements_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_entitlements_product_plan_id_fkey"
+            columns: ["product_plan_id"]
+            isOneToOne: false
+            referencedRelation: "product_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           created_at: string
@@ -300,6 +364,71 @@ export type Database = {
             columns: ["conta_origem_id"]
             isOneToOne: false
             referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      makeup_classes: {
+        Row: {
+          client_id: string
+          created_at: string
+          entitlement_id: string
+          id: string
+          makeup_appointment_id: string | null
+          original_appointment_id: string
+          prazo_limite: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          entitlement_id: string
+          id?: string
+          makeup_appointment_id?: string | null
+          original_appointment_id: string
+          prazo_limite: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          entitlement_id?: string
+          id?: string
+          makeup_appointment_id?: string | null
+          original_appointment_id?: string
+          prazo_limite?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "makeup_classes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "makeup_classes_entitlement_id_fkey"
+            columns: ["entitlement_id"]
+            isOneToOne: false
+            referencedRelation: "client_entitlements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "makeup_classes_makeup_appointment_id_fkey"
+            columns: ["makeup_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "makeup_classes_original_appointment_id_fkey"
+            columns: ["original_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
         ]
