@@ -4,6 +4,7 @@ import type { Payment, Appointment, Expense } from "@/types/clinic";
 import {
   mockPayments, mockClients, mockAppointments,
   mockEntitlements, mockServices, mockPlans, mockExpenses, getClientName,
+  mockBankAccounts, mockTransactions,
 } from "@/data/mockData";
 
 const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -160,10 +161,39 @@ export function useBIData(period: PeriodFilter, category: CategoryFilter) {
       name: expCatLabel[name] || name, value,
     }));
 
+    // Cash flow by account
+    const filteredTx = cutoff
+      ? mockTransactions.filter((t) => new Date(t.criadoEm) >= cutoff)
+      : mockTransactions;
+
+    const accountFlowMap: Record<string, { name: string; entradas: number; saidas: number }> = {};
+    mockBankAccounts.filter((a) => a.ativo).forEach((a) => {
+      accountFlowMap[a.id] = { name: a.nome, entradas: 0, saidas: 0 };
+    });
+    filteredTx.forEach((t) => {
+      if (t.tipo === "entrada" && t.contaDestinoId && accountFlowMap[t.contaDestinoId]) {
+        accountFlowMap[t.contaDestinoId].entradas += t.valor;
+      }
+      if (t.tipo === "saida" && t.contaOrigemId && accountFlowMap[t.contaOrigemId]) {
+        accountFlowMap[t.contaOrigemId].saidas += t.valor;
+      }
+      if (t.tipo === "transferencia") {
+        if (t.contaOrigemId && accountFlowMap[t.contaOrigemId]) accountFlowMap[t.contaOrigemId].saidas += t.valor;
+        if (t.contaDestinoId && accountFlowMap[t.contaDestinoId]) accountFlowMap[t.contaDestinoId].entradas += t.valor;
+      }
+    });
+    const cashFlowByAccount = Object.values(accountFlowMap).map((a) => ({
+      ...a, saldo: a.entradas - a.saidas,
+    }));
+
+    const accountBalances = mockBankAccounts.filter((a) => a.ativo).map((a) => ({
+      name: a.nome, saldo: a.saldoAtual,
+    }));
+
     return {
       revenue, catRev, payStatus, funnel, ltv, totalRevenue, avgTicket, activeClients,
       totalExpenses, totalFixedExpenses, totalVariableExpenses, profit, profitMargin,
-      revenueVsExpenses, expenseByCategory,
+      revenueVsExpenses, expenseByCategory, cashFlowByAccount, accountBalances,
     };
   }, [period, category]);
 }
