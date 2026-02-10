@@ -36,19 +36,18 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
   return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
-function applyCustomColor(el: HTMLElement, hex: string) {
-  const { h, s, l } = hexToHsl(hex);
-  const bgL = Math.min(l, 14);
+function applyHslTheme(el: HTMLElement, h: number, s: number, l: number) {
+  const bgL = Math.min(l, 18);
   const vars: Record<string, string> = {
     "--sidebar": `${h} ${Math.round(s * 0.5)}% ${bgL}%`,
     "--sidebar-background": `${h} ${Math.round(s * 0.5)}% ${bgL}%`,
     "--sidebar-foreground": "0 0% 92%",
-    "--sidebar-primary": `${h} ${s}% ${l}%`,
+    "--sidebar-primary": `${h} ${s}% ${Math.max(l, 50)}%`,
     "--sidebar-primary-foreground": "0 0% 100%",
     "--sidebar-accent": `${h} ${Math.round(s * 0.4)}% 22%`,
     "--sidebar-accent-foreground": "0 0% 98%",
     "--sidebar-border": `${h} ${Math.round(s * 0.3)}% 20%`,
-    "--sidebar-ring": `${h} ${s}% ${l}%`,
+    "--sidebar-ring": `${h} ${s}% ${Math.max(l, 50)}%`,
   };
   Object.entries(vars).forEach(([k, v]) => el.style.setProperty(k, v));
 }
@@ -100,7 +99,10 @@ export default function AppSidebar() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
 
   const [sidebarTheme, setSidebarTheme] = useState(() => localStorage.getItem("sidebar-theme") || "default");
-  const [customColor, setCustomColor] = useState(() => localStorage.getItem("sidebar-custom-color") || "#c2185b");
+  const [customHsl, setCustomHsl] = useState(() => {
+    const saved = localStorage.getItem("sidebar-custom-hsl");
+    return saved ? JSON.parse(saved) : { h: 333, s: 30, l: 14 };
+  });
   const [sidebarOpacity, setSidebarOpacity] = useState(() => Number(localStorage.getItem("sidebar-opacity") ?? 70));
   const [glassMode, setGlassMode] = useState(() => localStorage.getItem("sidebar-glass") === "true");
   const [blurLevel, setBlurLevel] = useState<"leve" | "medio" | "forte">(() => (localStorage.getItem("sidebar-blur") as any) || "forte");
@@ -117,12 +119,12 @@ export default function AppSidebar() {
     SIDEBAR_THEMES.forEach((t) => el.classList.remove(`sidebar-theme-${t.id}`));
     clearCustomColor(el);
     if (sidebarTheme === "custom") {
-      applyCustomColor(el, customColor);
+      applyHslTheme(el, customHsl.h, customHsl.s, customHsl.l);
     } else if (sidebarTheme !== "default") {
       el.classList.add(`sidebar-theme-${sidebarTheme}`);
     }
     localStorage.setItem("sidebar-theme", sidebarTheme);
-  }, [sidebarTheme, customColor]);
+  }, [sidebarTheme, customHsl]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -196,16 +198,33 @@ export default function AppSidebar() {
             />
           ))}
           {showPicker && (
-            <div className="absolute bottom-full left-3 mb-2 p-3 rounded-lg bg-sidebar-accent border border-sidebar-border shadow-lg z-50">
-              <input
-                type="color"
-                value={customColor}
-                onChange={(e) => {
-                  setCustomColor(e.target.value);
-                  localStorage.setItem("sidebar-custom-color", e.target.value);
-                }}
-                className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent"
-              />
+            <div className="absolute bottom-full left-3 mb-2 p-3 rounded-lg bg-sidebar-accent border border-sidebar-border shadow-lg z-50 w-52 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wide">HSL</span>
+                <div className="h-5 w-5 rounded-full border border-sidebar-border" style={{ backgroundColor: `hsl(${customHsl.h} ${customHsl.s}% ${customHsl.l}%)` }} />
+              </div>
+              {([
+                { key: "h", label: "H", min: 0, max: 360 },
+                { key: "s", label: "S", min: 0, max: 100 },
+                { key: "l", label: "L", min: 0, max: 100 },
+              ] as const).map(({ key, label, min, max }) => (
+                <div key={key} className="flex items-center gap-2">
+                  <span className="text-xs text-sidebar-foreground/70 w-3">{label}</span>
+                  <input
+                    type="range"
+                    min={min}
+                    max={max}
+                    value={customHsl[key]}
+                    onChange={(e) => {
+                      const next = { ...customHsl, [key]: Number(e.target.value) };
+                      setCustomHsl(next);
+                      localStorage.setItem("sidebar-custom-hsl", JSON.stringify(next));
+                    }}
+                    className="flex-1 h-1.5 accent-sidebar-primary cursor-pointer"
+                  />
+                  <span className="text-xs text-sidebar-foreground/60 w-7 text-right">{customHsl[key]}{key !== "h" ? "%" : "°"}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
