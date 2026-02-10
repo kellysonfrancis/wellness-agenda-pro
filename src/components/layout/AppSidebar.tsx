@@ -6,7 +6,7 @@ import {
   LogOut, Menu, X, BarChart3, Receipt, UserCog, Tags, Stethoscope, HandCoins, ShoppingCart, AlertTriangle, Activity, UserX, TrendingUp, ClipboardList, ListOrdered,
   Moon, Sun, MessageSquare, Palette
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const SIDEBAR_THEMES = [
   { id: "default", label: "Padrão", color: "hsl(333 71% 50%)" },
@@ -14,7 +14,49 @@ const SIDEBAR_THEMES = [
   { id: "blue", label: "Azul", color: "hsl(210 80% 60%)" },
   { id: "purple", label: "Roxo", color: "hsl(270 70% 65%)" },
   { id: "neutral", label: "Neutro", color: "hsl(0 0% 70%)" },
+  { id: "custom", label: "Personalizado", color: "" },
 ] as const;
+
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+function applyCustomColor(el: HTMLElement, hex: string) {
+  const { h, s, l } = hexToHsl(hex);
+  const bgL = Math.min(l, 14);
+  const vars: Record<string, string> = {
+    "--sidebar": `${h} ${Math.round(s * 0.5)}% ${bgL}%`,
+    "--sidebar-background": `${h} ${Math.round(s * 0.5)}% ${bgL}%`,
+    "--sidebar-foreground": "0 0% 92%",
+    "--sidebar-primary": `${h} ${s}% ${l}%`,
+    "--sidebar-primary-foreground": "0 0% 100%",
+    "--sidebar-accent": `${h} ${Math.round(s * 0.4)}% 22%`,
+    "--sidebar-accent-foreground": "0 0% 98%",
+    "--sidebar-border": `${h} ${Math.round(s * 0.3)}% 20%`,
+    "--sidebar-ring": `${h} ${s}% ${l}%`,
+  };
+  Object.entries(vars).forEach(([k, v]) => el.style.setProperty(k, v));
+}
+
+function clearCustomColor(el: HTMLElement) {
+  ["--sidebar","--sidebar-background","--sidebar-foreground","--sidebar-primary","--sidebar-primary-foreground","--sidebar-accent","--sidebar-accent-foreground","--sidebar-border","--sidebar-ring"]
+    .forEach((k) => el.style.removeProperty(k));
+}
 
 interface NavItem {
   label: string;
@@ -58,20 +100,34 @@ export default function AppSidebar() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
 
   const [sidebarTheme, setSidebarTheme] = useState(() => localStorage.getItem("sidebar-theme") || "default");
+  const [customColor, setCustomColor] = useState(() => localStorage.getItem("sidebar-custom-color") || "#c2185b");
+  const [showPicker, setShowPicker] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
   }, [dark]);
 
   useEffect(() => {
-    const el = document.querySelector("[data-sidebar-root]");
+    const el = document.querySelector("[data-sidebar-root]") as HTMLElement | null;
     if (!el) return;
     SIDEBAR_THEMES.forEach((t) => el.classList.remove(`sidebar-theme-${t.id}`));
-    if (sidebarTheme !== "default") {
+    clearCustomColor(el);
+    if (sidebarTheme === "custom") {
+      applyCustomColor(el, customColor);
+    } else if (sidebarTheme !== "default") {
       el.classList.add(`sidebar-theme-${sidebarTheme}`);
     }
     localStorage.setItem("sidebar-theme", sidebarTheme);
-  }, [sidebarTheme]);
+  }, [sidebarTheme, customColor]);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setShowPicker(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   if (!profile) return null;
 
@@ -115,19 +171,40 @@ export default function AppSidebar() {
           <p className="text-sm font-medium text-sidebar-foreground">{profile.nome || profile.email}</p>
           <p className="text-xs text-sidebar-foreground/60 capitalize">{roles.join(", ") || "sem papel"}</p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-2">
+        <div className="relative flex items-center gap-2 px-3 py-2" ref={pickerRef}>
           <Palette className="h-4 w-4 text-sidebar-foreground/70 shrink-0" />
           {SIDEBAR_THEMES.map((t) => (
             <button
               key={t.id}
-              onClick={() => setSidebarTheme(t.id)}
+              onClick={() => {
+                if (t.id === "custom") {
+                  setShowPicker((v) => !v);
+                  setSidebarTheme("custom");
+                } else {
+                  setSidebarTheme(t.id);
+                  setShowPicker(false);
+                }
+              }}
               title={t.label}
               className={`h-5 w-5 rounded-full border-2 transition-transform hover:scale-110 ${
                 sidebarTheme === t.id ? "border-sidebar-foreground scale-110" : "border-transparent"
-              }`}
-              style={{ backgroundColor: t.color }}
+              } ${t.id === "custom" ? "bg-gradient-to-br from-red-400 via-green-400 to-blue-400" : ""}`}
+              style={t.color ? { backgroundColor: t.color } : undefined}
             />
           ))}
+          {showPicker && (
+            <div className="absolute bottom-full left-3 mb-2 p-3 rounded-lg bg-sidebar-accent border border-sidebar-border shadow-lg z-50">
+              <input
+                type="color"
+                value={customColor}
+                onChange={(e) => {
+                  setCustomColor(e.target.value);
+                  localStorage.setItem("sidebar-custom-color", e.target.value);
+                }}
+                className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent"
+              />
+            </div>
+          )}
         </div>
         <button
           onClick={() => setDark(!dark)}
