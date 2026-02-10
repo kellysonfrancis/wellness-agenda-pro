@@ -10,13 +10,14 @@ import { useToast } from "@/hooks/use-toast";
 interface DBPayment {
   id: string;
   client_id: string;
+  appointment_id: string | null;
   valor_total: number;
   valor_pago: number;
   status: string;
   metodo: string;
   pago_em: string | null;
   conta_destino_id: string | null;
-  client: { nome: string } | null;
+  client: { nome: string; telefone: string } | null;
   bank_account: { nome: string } | null;
 }
 
@@ -29,7 +30,7 @@ export default function Financeiro() {
     setLoading(true);
     const { data } = await supabase
       .from("payments")
-      .select("*, client:clients(nome), bank_account:bank_accounts(nome)")
+      .select("*, client:clients(nome, telefone), bank_account:bank_accounts(nome)")
       .order("created_at", { ascending: false });
     if (data) setPayments(data as unknown as DBPayment[]);
     setLoading(false);
@@ -113,7 +114,7 @@ export default function Financeiro() {
                           <td className="p-4"><span className="text-xs px-2.5 py-1 rounded-full bg-warning/10 text-warning font-medium">{p.status}</span></td>
                           <td className="p-4 flex gap-2">
                             <button onClick={() => handleBaixar(p)} className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90">Baixar</button>
-                            <ReceiptButton payment={p} />
+                            <ReceiptButton payment={{ ...p, client_telefone: p.client?.telefone, client_id: p.client_id, appointment_id: p.appointment_id }} />
                           </td>
                         </tr>
                       ))}
@@ -145,7 +146,7 @@ export default function Financeiro() {
                           <td className="p-4 capitalize">{p.metodo}</td>
                           <td className="p-4">{p.bank_account?.nome || <span className="text-muted-foreground">—</span>}</td>
                           <td className="p-4">{p.pago_em ? new Date(p.pago_em).toLocaleDateString("pt-BR") : "—"}</td>
-                          <td className="p-4"><ReceiptButton payment={p} /></td>
+                          <td className="p-4"><ReceiptButton payment={{ ...p, client_telefone: p.client?.telefone, client_id: p.client_id, appointment_id: p.appointment_id }} /></td>
                         </tr>
                       ))}
                     </tbody>
