@@ -66,9 +66,14 @@ export default function AppSidebar() {
 
   const sidebar = (
     <div className="flex flex-col h-full bg-sidebar w-64 p-4">
-      <div className="mb-6 px-3">
-        <h2 className="text-lg font-bold text-sidebar-foreground">Clínica</h2>
-        <p className="text-xs text-sidebar-foreground/60 mt-0.5">Gestão Integrada</p>
+      <div className="mb-6 px-3 flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary/20">
+          <Stethoscope className="h-5 w-5 text-sidebar-primary" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-sidebar-foreground leading-tight">Clínica</h2>
+          <p className="text-xs text-sidebar-foreground/60">Gestão Integrada</p>
+        </div>
       </div>
 
       <nav className="flex-1 space-y-1">
