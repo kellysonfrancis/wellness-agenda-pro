@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Stethoscope, Plus, Loader2, X, Pencil, Save, Trash2, Eye, Clock, ListChecks } from "lucide-react";
+import { Stethoscope, Plus, Loader2, X, Pencil, Save, Trash2, Eye, Clock, ListChecks, Coffee, Minus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Professional {
@@ -221,6 +221,24 @@ export default function Profissionais() {
     fetchAll();
   };
 
+  const handleAddPausa = async (schedId: string, currentPausas: { inicio: number; fim: number }[]) => {
+    const newPausas = [...currentPausas, { inicio: 12, fim: 13 }];
+    await supabase.from("professional_schedules").update({ pausas: newPausas } as any).eq("id", schedId);
+    fetchAll();
+  };
+
+  const handleRemovePausa = async (schedId: string, currentPausas: { inicio: number; fim: number }[], index: number) => {
+    const newPausas = currentPausas.filter((_, i) => i !== index);
+    await supabase.from("professional_schedules").update({ pausas: newPausas } as any).eq("id", schedId);
+    fetchAll();
+  };
+
+  const handleUpdatePausa = async (schedId: string, currentPausas: { inicio: number; fim: number }[], index: number, field: "inicio" | "fim", value: number) => {
+    const newPausas = currentPausas.map((p, i) => i === index ? { ...p, [field]: value } : p);
+    await supabase.from("professional_schedules").update({ pausas: newPausas } as any).eq("id", schedId);
+    fetchAll();
+  };
+
   const handleToggleService = async (serviceId: string) => {
     if (!detailProfId) return;
     const existing = detailProfSvcs.find(s => s.service_id === serviceId);
@@ -393,25 +411,68 @@ export default function Profissionais() {
                           {wd.label.slice(0, 3)}
                         </button>
                         {sched && (
-                          <div className="flex items-center gap-1 text-xs">
-                            <input
-                              type="number"
-                              min={0}
-                              max={23}
-                              value={sched.hora_inicio}
-                              onChange={(e) => handleUpdateSchedule(sched.id, "hora_inicio", Number(e.target.value))}
-                              className="w-12 rounded border border-input bg-background px-1 py-1 text-center text-xs"
-                            />
-                            <span>–</span>
-                            <input
-                              type="number"
-                              min={0}
-                              max={23}
-                              value={sched.hora_fim}
-                              onChange={(e) => handleUpdateSchedule(sched.id, "hora_fim", Number(e.target.value))}
-                              className="w-12 rounded border border-input bg-background px-1 py-1 text-center text-xs"
-                            />
-                            <span className="text-muted-foreground">h</span>
+                          <div className="flex-1 space-y-1.5">
+                            <div className="flex items-center gap-1 text-xs">
+                              <input
+                                type="number"
+                                min={0}
+                                max={23}
+                                value={sched.hora_inicio}
+                                onChange={(e) => handleUpdateSchedule(sched.id, "hora_inicio", Number(e.target.value))}
+                                className="w-12 rounded border border-input bg-background px-1 py-1 text-center text-xs"
+                              />
+                              <span>–</span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={23}
+                                value={sched.hora_fim}
+                                onChange={(e) => handleUpdateSchedule(sched.id, "hora_fim", Number(e.target.value))}
+                                className="w-12 rounded border border-input bg-background px-1 py-1 text-center text-xs"
+                              />
+                              <span className="text-muted-foreground">h</span>
+                              <button
+                                onClick={() => handleAddPausa(sched.id, sched.pausas)}
+                                className="ml-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                                title="Adicionar pausa"
+                              >
+                                <Coffee className="h-3 w-3" /> +
+                              </button>
+                            </div>
+                            {sched.pausas.length > 0 && (
+                              <div className="ml-1 space-y-1">
+                                {sched.pausas.map((pausa, idx) => (
+                                  <div key={idx} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                    <Coffee className="h-3 w-3 shrink-0 opacity-60" />
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={23}
+                                      value={pausa.inicio}
+                                      onChange={(e) => handleUpdatePausa(sched.id, sched.pausas, idx, "inicio", Number(e.target.value))}
+                                      className="w-10 rounded border border-input bg-background px-1 py-0.5 text-center text-[11px]"
+                                    />
+                                    <span>–</span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={23}
+                                      value={pausa.fim}
+                                      onChange={(e) => handleUpdatePausa(sched.id, sched.pausas, idx, "fim", Number(e.target.value))}
+                                      className="w-10 rounded border border-input bg-background px-1 py-0.5 text-center text-[11px]"
+                                    />
+                                    <span>h</span>
+                                    <button
+                                      onClick={() => handleRemovePausa(sched.id, sched.pausas, idx)}
+                                      className="ml-0.5 p-0.5 rounded hover:bg-destructive/10 text-destructive/60 hover:text-destructive transition-colors"
+                                      title="Remover pausa"
+                                    >
+                                      <Minus className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
