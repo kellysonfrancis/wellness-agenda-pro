@@ -98,10 +98,20 @@ export async function validateCapacity(
 
   if (!svc) return null;
 
-  const maxCapacity = svc.max_alunos;
+  let maxCapacity = svc.max_alunos;
 
-  // If no limit set, for fisioterapia default to 1 per professional
-  const effectiveMax = maxCapacity ?? (svc.categoria === "fisioterapia" ? 1 : null);
+  // If no service-level limit, check category-level limit
+  if (!maxCapacity) {
+    const { data: cat } = await supabase
+      .from("categories")
+      .select("max_alunos")
+      .eq("slug", svc.categoria)
+      .single();
+    maxCapacity = (cat as any)?.max_alunos ?? null;
+  }
+
+  // If still no limit, for fisioterapia/estetica default to 1 per professional
+  const effectiveMax = maxCapacity ?? (["fisioterapia", "estetica"].includes(svc.categoria) ? 1 : null);
 
   if (!effectiveMax) return null; // No limit
 

@@ -202,6 +202,7 @@ export type Database = {
           created_at: string
           descricao: string | null
           id: string
+          max_alunos: number | null
           nome: string
           slug: string
           updated_at: string
@@ -212,6 +213,7 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           id?: string
+          max_alunos?: number | null
           nome: string
           slug: string
           updated_at?: string
@@ -222,6 +224,7 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           id?: string
+          max_alunos?: number | null
           nome?: string
           slug?: string
           updated_at?: string

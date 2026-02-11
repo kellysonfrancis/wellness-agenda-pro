@@ -11,9 +11,10 @@ interface Category {
   descricao: string | null;
   cor: string;
   ativo: boolean;
+  max_alunos: number | null;
 }
 
-const emptyForm = { nome: "", slug: "", descricao: "", cor: "#6366f1" };
+const emptyForm = { nome: "", slug: "", descricao: "", cor: "#6366f1", max_alunos: "" as string | number };
 
 export default function Categorias() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -46,7 +47,7 @@ export default function Categorias() {
 
   const openEdit = (cat: Category) => {
     setEditingId(cat.id);
-    setForm({ nome: cat.nome, slug: cat.slug, descricao: cat.descricao || "", cor: cat.cor });
+    setForm({ nome: cat.nome, slug: cat.slug, descricao: cat.descricao || "", cor: cat.cor, max_alunos: cat.max_alunos ?? "" });
     setShowForm(true);
   };
 
@@ -64,6 +65,7 @@ export default function Categorias() {
       slug,
       descricao: form.descricao.trim() || null,
       cor: form.cor,
+      max_alunos: form.max_alunos === "" ? null : Number(form.max_alunos),
     };
 
     if (editingId) {
@@ -161,7 +163,13 @@ export default function Categorias() {
                   {cat.ativo ? "Ativa" : "Inativa"}
                 </span>
               </div>
-              {cat.descricao && <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{cat.descricao}</p>}
+              {cat.descricao && <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{cat.descricao}</p>}
+              {cat.max_alunos && (
+                <p className="text-xs text-muted-foreground mb-3">
+                  👥 Máx. {cat.max_alunos} aluno{cat.max_alunos > 1 ? "s" : ""} por horário
+                </p>
+              )}
+              {!cat.max_alunos && cat.descricao && <div className="mb-1" />}
               <div className="flex gap-2">
                 <button onClick={() => openEdit(cat)} className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg bg-secondary text-secondary-foreground font-medium hover:bg-accent transition-colors">
                   <Pencil className="h-3 w-3" /> Editar
@@ -244,6 +252,21 @@ export default function Categorias() {
                   <span className="text-sm text-muted-foreground">{form.cor}</span>
                 </div>
               </div>
+              <div>
+                <label className="text-sm text-muted-foreground" htmlFor="cat-max">Máx. Alunos por Horário</label>
+                <input
+                  id="cat-max"
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={form.max_alunos}
+                  onChange={(e) => setForm({ ...form, max_alunos: e.target.value === "" ? "" : Number(e.target.value) })}
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  placeholder="Ex: 5 (deixe vazio para não limitar)"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Define o limite padrão de atendimentos simultâneos para esta categoria no agendamento.</p>
+              </div>
+
 
               <div className="flex gap-2 pt-2">
                 <button
