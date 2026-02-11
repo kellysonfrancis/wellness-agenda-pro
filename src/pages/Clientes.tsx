@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { createAndDownloadExcel } from "@/lib/excelExport";
 import {
   Users, Search, Plus, Phone, Mail, Loader2, X, Pencil, Save, Trash2, Calendar,
-  Filter, UserCheck, UserX, Download
+  Filter, UserCheck, UserX, Download, Package
 } from "lucide-react";
 
 interface DBClient {
@@ -30,6 +30,16 @@ interface ClientCategory {
   clientId: string;
   categorias: string[];
   ativo: boolean;
+}
+
+interface DBEntitlement {
+  id: string;
+  status: string;
+  inicio_em: string;
+  expira_em: string | null;
+  saldo_creditos: number | null;
+  observacoes: string | null;
+  product_plan: { nome: string; categoria: string; tipo: string } | null;
 }
 
 const emptyForm = {
@@ -63,6 +73,7 @@ export default function Clientes() {
   const [saving, setSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [appointments, setAppointments] = useState<DBAppointment[]>([]);
+  const [entitlements, setEntitlements] = useState<DBEntitlement[]>([]);
   const [clientCategories, setClientCategories] = useState<Map<string, ClientCategory>>(new Map());
 
   // Filters
@@ -110,9 +121,9 @@ export default function Clientes() {
     fetchClientCategories();
   }, [fetchClients, fetchClientCategories]);
 
-  // Fetch appointments when a client is selected
+  // Fetch appointments and entitlements when a client is selected
   useEffect(() => {
-    if (!selectedId) { setAppointments([]); return; }
+    if (!selectedId) { setAppointments([]); setEntitlements([]); return; }
     supabase
       .from("appointments")
       .select("id, inicio_em, status, service:services(nome)")
@@ -121,6 +132,14 @@ export default function Clientes() {
       .limit(10)
       .then(({ data }) => {
         if (data) setAppointments(data as unknown as DBAppointment[]);
+      });
+    supabase
+      .from("client_entitlements")
+      .select("id, status, inicio_em, expira_em, saldo_creditos, observacoes, product_plan:product_plans(nome, categoria, tipo)")
+      .eq("client_id", selectedId)
+      .order("inicio_em", { ascending: false })
+      .then(({ data }) => {
+        if (data) setEntitlements(data as unknown as DBEntitlement[]);
       });
   }, [selectedId]);
 
@@ -418,6 +437,51 @@ export default function Clientes() {
                         <button onClick={() => setConfirmDeleteId(selected.id)} className="p-1.5 rounded-lg hover:bg-muted transition-colors"><Trash2 className="h-4 w-4 text-destructive" /></button>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* Entitlements / Plans History */}
+                <div className="bg-card rounded-xl border border-border shadow-sm">
+                  <div className="border-b border-border p-4">
+                    <h3 className="text-sm font-semibold flex items-center gap-1.5">
+                      <Package className="h-4 w-4 text-primary" /> Planos / Pacotes ({entitlements.length})
+                    </h3>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {entitlements.length === 0 ? (
+                      <p className="p-4 text-sm text-muted-foreground">Nenhum plano ou pacote vinculado.</p>
+                    ) : entitlements.map(ent => {
+                      const cat = ent.product_plan?.categoria || "";
+                      const statusColors: Record<string, string> = {
+                        ativo: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+                        pausado: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+                        encerrado: "bg-muted text-muted-foreground",
+                        vencido: "bg-destructive/10 text-destructive",
+                      };
+                      return (
+                        <div key={ent.id} className="p-3 text-sm">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{ent.product_plan?.nome || "Plano"}</span>
+                              {cat && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${CAT_COLORS[cat] || ""}`}>
+                                  {CAT_LABELS[cat] || cat}
+                                </span>
+                              )}
+                            </div>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[ent.status] || "bg-muted text-muted-foreground"}`}>
+                              {ent.status}
+                            </span>
+                          </div>
+                          <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                            <span>Início: {new Date(ent.inicio_em + "T00:00:00").toLocaleDateString("pt-BR")}</span>
+                            {ent.expira_em && <span>Vencimento: {new Date(ent.expira_em + "T00:00:00").toLocaleDateString("pt-BR")}</span>}
+                            {ent.saldo_creditos != null && <span>Créditos: {ent.saldo_creditos}</span>}
+                          </div>
+                          {ent.observacoes && <p className="text-xs text-muted-foreground mt-1 italic">{ent.observacoes}</p>}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
