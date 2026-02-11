@@ -14,7 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { DollarSign, Plus, Check, Pencil, TrendingUp, Users, Receipt, Filter, X, FileDown, FileSpreadsheet } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
+import { exportJsonToExcel } from "@/lib/excelExport";
 
 const catLabel: Record<string, string> = { pilates: "Pilates", fisioterapia: "Fisioterapia", estetica: "Estética" };
 const PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--primary) / 0.6)", "hsl(var(--primary) / 0.3)"];
@@ -226,16 +226,13 @@ export default function Comissoes() {
       status: s.pago ? "Pago" : "Pendente",
     }));
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     const rows = buildRows();
-    const ws = XLSX.utils.json_to_sheet(rows.map((r) => ({
+    await exportJsonToExcel(rows.map((r) => ({
       Data: r.data, Vendedor: r.vendedor, Tipo: r.tipo, Cliente: r.cliente,
       Categoria: r.categoria, "Valor Venda": r.valorVenda, "Comissão": r.comissao,
       "%": r.percentual, Status: r.status,
-    })));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Comissões");
-    XLSX.writeFile(wb, `Comissoes_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    })), "Comissões", `Comissoes_${new Date().toISOString().slice(0, 10)}.xlsx`);
     toast({ title: "Excel exportado!" });
   };
 
