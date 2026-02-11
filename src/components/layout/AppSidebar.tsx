@@ -287,7 +287,6 @@ export default function AppSidebar() {
             document.documentElement.classList.toggle("dark", next);
             localStorage.setItem("theme", next ? "dark" : "light");
 
-            // Re-apply palette for the new mode (same logic as ThemeCustomizer)
             const presetId = localStorage.getItem("palette-preset");
             if (presetId) {
               const savedLight = localStorage.getItem("palette-custom-light");
@@ -296,12 +295,49 @@ export default function AppSidebar() {
                 const values = next ? JSON.parse(savedDark) : JSON.parse(savedLight);
                 const tokens = ["primary","secondary","accent","background","card","muted","destructive","success","warning","info"];
                 const vars = ["--primary","--secondary","--accent","--background","--card","--muted","--destructive","--success","--warning","--info"];
+                const fgVars: Record<string, string> = {
+                  primary: "--primary-foreground", secondary: "--secondary-foreground",
+                  accent: "--accent-foreground", background: "--foreground",
+                  card: "--card-foreground", muted: "--muted-foreground",
+                  destructive: "--destructive-foreground", success: "--success-foreground",
+                  warning: "--warning-foreground", info: "--info-foreground",
+                };
                 tokens.forEach((key, i) => {
                   const val = values[key];
-                  if (val) document.documentElement.style.setProperty(vars[i], `${val.h} ${val.s}% ${val.l}%`);
+                  if (val) {
+                    document.documentElement.style.setProperty(vars[i], `${val.h} ${val.s}% ${val.l}%`);
+                    // Set foreground
+                    const fgVar = fgVars[key];
+                    if (fgVar) {
+                      let fg;
+                      if (key === "primary") {
+                        fg = val.l > 50 ? { h: val.h, s: Math.round(val.s * 0.8), l: 17 } : { h: val.h, s: 73, l: 97 };
+                      } else {
+                        fg = val.l > 50 ? { h: val.h, s: Math.round(val.s * 0.5), l: 10 } : { h: 0, s: 0, l: 98 };
+                      }
+                      document.documentElement.style.setProperty(fgVar, `${fg.h} ${fg.s}% ${fg.l}%`);
+                    }
+                  }
                 });
+                // Border/input/ring
+                const muted = values.muted;
+                if (muted) {
+                  document.documentElement.style.setProperty("--border", `${muted.h} ${muted.s}% ${muted.l}%`);
+                  document.documentElement.style.setProperty("--input", `${muted.h} ${muted.s}% ${muted.l}%`);
+                }
+                const primary = values.primary;
+                if (primary) {
+                  document.documentElement.style.setProperty("--ring", `${primary.h} ${primary.s}% ${primary.l}%`);
+                }
+                return;
               }
             }
+            // No preset — clear inline overrides so CSS defaults kick in
+            ["--primary","--secondary","--accent","--background","--card","--muted","--destructive","--success","--warning","--info",
+             "--primary-foreground","--secondary-foreground","--accent-foreground","--foreground",
+             "--card-foreground","--muted-foreground","--destructive-foreground","--success-foreground",
+             "--warning-foreground","--info-foreground","--border","--input","--ring"
+            ].forEach(v => document.documentElement.style.removeProperty(v));
           }}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground transition-colors w-full"
         >
