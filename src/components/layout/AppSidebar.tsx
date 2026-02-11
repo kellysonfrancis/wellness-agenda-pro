@@ -134,8 +134,29 @@ export default function AppSidebar() {
     }
   }, [sidebarTheme]);
 
-  // Apply palette overrides from localStorage
+  // Apply palette overrides from localStorage (mode-aware)
   useEffect(() => {
+    const presetId = localStorage.getItem("palette-preset");
+    const isDark = document.documentElement.classList.contains("dark");
+    
+    if (presetId) {
+      const savedLight = localStorage.getItem("palette-custom-light");
+      const savedDark = localStorage.getItem("palette-custom-dark");
+      if (savedLight && savedDark) {
+        const values = isDark ? JSON.parse(savedDark) : JSON.parse(savedLight);
+        const tokens = ["primary","secondary","accent","background","card","muted","destructive","success","warning","info"];
+        const vars = ["--primary","--secondary","--accent","--background","--card","--muted","--destructive","--success","--warning","--info"];
+        tokens.forEach((key, i) => {
+          const val = values[key];
+          if (val) {
+            document.documentElement.style.setProperty(vars[i], `${val.h} ${val.s}% ${val.l}%`);
+          }
+        });
+        return;
+      }
+    }
+    
+    // Fallback: individual saved values
     const tokens = ["primary","secondary","accent","background","card","muted","destructive","success","warning","info"];
     const vars = ["--primary","--secondary","--accent","--background","--card","--muted","--destructive","--success","--warning","--info"];
     tokens.forEach((key, i) => {
@@ -147,7 +168,7 @@ export default function AppSidebar() {
         } catch {}
       }
     });
-  }, []);
+  }, [dark]);
 
   if (!profile) return null;
 

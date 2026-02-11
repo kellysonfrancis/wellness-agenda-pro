@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Palette, Sparkles, Moon, Sun, RotateCcw, Pipette } from "lucide-react";
 
 /* ── Sidebar theme presets ── */
@@ -31,14 +31,29 @@ const PALETTE_TOKENS: PaletteToken[] = [
   { key: "info", label: "Info", cssVar: "--info" },
 ];
 
+// Additional tokens that need foreground values
+const FOREGROUND_MAP: Record<string, string> = {
+  primary: "--primary-foreground",
+  secondary: "--secondary-foreground",
+  accent: "--accent-foreground",
+  background: "--foreground",
+  card: "--card-foreground",
+  muted: "--muted-foreground",
+  destructive: "--destructive-foreground",
+  success: "--success-foreground",
+  warning: "--warning-foreground",
+  info: "--info-foreground",
+};
+
 type HSL = { h: number; s: number; l: number };
 type PaletteMap = Record<string, HSL>;
 
 interface PresetPalette {
   id: string;
   label: string;
-  preview: string[]; // hex colors for visual preview
-  values: PaletteMap;
+  preview: string[];
+  light: PaletteMap;
+  dark: PaletteMap;
 }
 
 const PRESET_PALETTES: PresetPalette[] = [
@@ -46,78 +61,120 @@ const PRESET_PALETTES: PresetPalette[] = [
     id: "rosa-clinico",
     label: "Rosa Clínico",
     preview: ["#c2185b", "#f8bbd0", "#fce4ec", "#f5f5f5"],
-    values: {
+    light: {
       primary: { h: 333, s: 71, l: 50 }, secondary: { h: 240, s: 5, l: 33 },
       accent: { h: 355, s: 100, l: 97 }, background: { h: 240, s: 4, l: 95 },
       card: { h: 0, s: 0, l: 98 }, muted: { h: 240, s: 4, l: 83 },
       destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
       warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
     },
+    dark: {
+      primary: { h: 328, s: 85, l: 70 }, secondary: { h: 240, s: 3, l: 46 },
+      accent: { h: 343, s: 87, l: 15 }, background: { h: 240, s: 5, l: 10 },
+      card: { h: 240, s: 3, l: 15 }, muted: { h: 240, s: 3, l: 46 },
+      destructive: { h: 0, s: 84, l: 60 }, success: { h: 152, s: 55, l: 45 },
+      warning: { h: 38, s: 85, l: 55 }, info: { h: 205, s: 75, l: 55 },
+    },
   },
   {
     id: "azul-oceano",
     label: "Azul Oceano",
     preview: ["#1565c0", "#90caf9", "#e3f2fd", "#fafafa"],
-    values: {
+    light: {
       primary: { h: 210, s: 80, l: 45 }, secondary: { h: 210, s: 15, l: 35 },
       accent: { h: 210, s: 100, l: 95 }, background: { h: 210, s: 10, l: 96 },
       card: { h: 210, s: 10, l: 99 }, muted: { h: 210, s: 10, l: 85 },
       destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
       warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
     },
+    dark: {
+      primary: { h: 210, s: 85, l: 65 }, secondary: { h: 210, s: 10, l: 46 },
+      accent: { h: 210, s: 60, l: 15 }, background: { h: 215, s: 15, l: 10 },
+      card: { h: 215, s: 12, l: 15 }, muted: { h: 210, s: 10, l: 46 },
+      destructive: { h: 0, s: 84, l: 60 }, success: { h: 152, s: 55, l: 45 },
+      warning: { h: 38, s: 85, l: 55 }, info: { h: 205, s: 75, l: 55 },
+    },
   },
   {
     id: "verde-natureza",
     label: "Verde Natureza",
     preview: ["#2e7d32", "#a5d6a7", "#e8f5e9", "#fafafa"],
-    values: {
+    light: {
       primary: { h: 130, s: 55, l: 40 }, secondary: { h: 130, s: 10, l: 35 },
       accent: { h: 130, s: 80, l: 95 }, background: { h: 130, s: 8, l: 96 },
       card: { h: 130, s: 8, l: 99 }, muted: { h: 130, s: 8, l: 85 },
       destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
       warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
     },
+    dark: {
+      primary: { h: 130, s: 60, l: 60 }, secondary: { h: 130, s: 8, l: 46 },
+      accent: { h: 130, s: 40, l: 15 }, background: { h: 135, s: 10, l: 10 },
+      card: { h: 135, s: 8, l: 15 }, muted: { h: 130, s: 8, l: 46 },
+      destructive: { h: 0, s: 84, l: 60 }, success: { h: 152, s: 55, l: 45 },
+      warning: { h: 38, s: 85, l: 55 }, info: { h: 205, s: 75, l: 55 },
+    },
   },
   {
     id: "roxo-elegante",
     label: "Roxo Elegante",
     preview: ["#7b1fa2", "#ce93d8", "#f3e5f5", "#fafafa"],
-    values: {
+    light: {
       primary: { h: 280, s: 65, l: 50 }, secondary: { h: 280, s: 10, l: 35 },
       accent: { h: 280, s: 80, l: 95 }, background: { h: 280, s: 8, l: 96 },
       card: { h: 280, s: 8, l: 99 }, muted: { h: 280, s: 8, l: 85 },
       destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
       warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
     },
+    dark: {
+      primary: { h: 280, s: 70, l: 68 }, secondary: { h: 280, s: 8, l: 46 },
+      accent: { h: 280, s: 50, l: 15 }, background: { h: 275, s: 12, l: 10 },
+      card: { h: 275, s: 10, l: 15 }, muted: { h: 280, s: 8, l: 46 },
+      destructive: { h: 0, s: 84, l: 60 }, success: { h: 152, s: 55, l: 45 },
+      warning: { h: 38, s: 85, l: 55 }, info: { h: 205, s: 75, l: 55 },
+    },
   },
   {
     id: "laranja-quente",
     label: "Laranja Quente",
     preview: ["#e65100", "#ffcc80", "#fff3e0", "#fafafa"],
-    values: {
+    light: {
       primary: { h: 24, s: 85, l: 50 }, secondary: { h: 24, s: 10, l: 35 },
       accent: { h: 24, s: 100, l: 95 }, background: { h: 30, s: 8, l: 96 },
       card: { h: 30, s: 8, l: 99 }, muted: { h: 30, s: 8, l: 85 },
       destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
       warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
     },
+    dark: {
+      primary: { h: 24, s: 90, l: 62 }, secondary: { h: 24, s: 8, l: 46 },
+      accent: { h: 24, s: 60, l: 15 }, background: { h: 25, s: 10, l: 10 },
+      card: { h: 25, s: 8, l: 15 }, muted: { h: 24, s: 8, l: 46 },
+      destructive: { h: 0, s: 84, l: 60 }, success: { h: 152, s: 55, l: 45 },
+      warning: { h: 38, s: 85, l: 55 }, info: { h: 205, s: 75, l: 55 },
+    },
   },
   {
     id: "cinza-moderno",
     label: "Cinza Moderno",
     preview: ["#455a64", "#b0bec5", "#eceff1", "#fafafa"],
-    values: {
+    light: {
       primary: { h: 200, s: 18, l: 40 }, secondary: { h: 200, s: 10, l: 35 },
       accent: { h: 200, s: 15, l: 95 }, background: { h: 200, s: 5, l: 96 },
       card: { h: 200, s: 5, l: 99 }, muted: { h: 200, s: 5, l: 85 },
       destructive: { h: 0, s: 72, l: 50 }, success: { h: 152, s: 60, l: 40 },
       warning: { h: 38, s: 92, l: 50 }, info: { h: 205, s: 80, l: 50 },
     },
+    dark: {
+      primary: { h: 200, s: 20, l: 65 }, secondary: { h: 200, s: 8, l: 46 },
+      accent: { h: 200, s: 12, l: 15 }, background: { h: 200, s: 8, l: 10 },
+      card: { h: 200, s: 6, l: 15 }, muted: { h: 200, s: 5, l: 46 },
+      destructive: { h: 0, s: 84, l: 60 }, success: { h: 152, s: 55, l: 45 },
+      warning: { h: 38, s: 85, l: 55 }, info: { h: 205, s: 75, l: 55 },
+    },
   },
 ];
 
-/** Generate a full palette from a single base color */
-function generatePaletteFromColor(base: HSL): PaletteMap {
+/** Generate a full palette from a single base color (light + dark) */
+function generateLightPalette(base: HSL): PaletteMap {
   return {
     primary: { h: base.h, s: base.s, l: base.l },
     secondary: { h: base.h, s: Math.round(base.s * 0.15), l: 33 },
@@ -132,14 +189,43 @@ function generatePaletteFromColor(base: HSL): PaletteMap {
   };
 }
 
-function getComputedHsl(cssVar: string): { h: number; s: number; l: number } {
+function generateDarkPalette(base: HSL): PaletteMap {
+  return {
+    primary: { h: base.h, s: Math.min(base.s + 15, 100), l: Math.max(base.l + 20, 65) },
+    secondary: { h: base.h, s: Math.round(base.s * 0.1), l: 46 },
+    accent: { h: base.h, s: Math.round(base.s * 0.5), l: 15 },
+    background: { h: base.h, s: Math.round(base.s * 0.12), l: 10 },
+    card: { h: base.h, s: Math.round(base.s * 0.08), l: 15 },
+    muted: { h: base.h, s: Math.round(base.s * 0.08), l: 46 },
+    destructive: { h: 0, s: 84, l: 60 },
+    success: { h: 152, s: 55, l: 45 },
+    warning: { h: 38, s: 85, l: 55 },
+    info: { h: 205, s: 75, l: 55 },
+  };
+}
+
+function getForegroundForBg(hsl: HSL): HSL {
+  // Light bg -> dark text, dark bg -> light text
+  return hsl.l > 50
+    ? { h: hsl.h, s: Math.round(hsl.s * 0.5), l: 10 }
+    : { h: 0, s: 0, l: 98 };
+}
+
+function getAccentForeground(accent: HSL, primary: HSL): HSL {
+  // For accent, use the primary hue with appropriate lightness
+  return accent.l > 50
+    ? { h: primary.h, s: Math.min(primary.s + 10, 100), l: Math.min(primary.l + 10, 60) }
+    : { h: primary.h, s: Math.min(primary.s + 10, 100), l: Math.max(primary.l, 70) };
+}
+
+function getComputedHsl(cssVar: string): HSL {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
   const parts = raw.split(/[\s]+/);
   return { h: parseInt(parts[0]) || 0, s: parseInt(parts[1]) || 0, l: parseInt(parts[2]) || 0 };
 }
 
 /* ── Color conversion helpers ── */
-function hexToHsl(hex: string): { h: number; s: number; l: number } {
+function hexToHsl(hex: string): HSL {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
   const b = parseInt(hex.slice(5, 7), 16) / 255;
@@ -203,25 +289,105 @@ export default function ThemeCustomizer() {
   const [blurLevel, setBlurLevel] = useState<"leve" | "medio" | "forte">(() => (localStorage.getItem("sidebar-blur") as any) || "forte");
 
   // Palette state
-  const [palette, setPalette] = useState<Record<string, { h: number; s: number; l: number }>>({});
+  const [palette, setPalette] = useState<PaletteMap>({});
 
-  useEffect(() => {
-    const initial: Record<string, { h: number; s: number; l: number }> = {};
+  // Apply palette values to CSS variables
+  const applyCssVars = useCallback((values: PaletteMap) => {
     PALETTE_TOKENS.forEach((t) => {
-      const saved = localStorage.getItem(`palette-${t.key}`);
-      if (saved) {
-        initial[t.key] = JSON.parse(saved);
-      } else {
-        initial[t.key] = getComputedHsl(t.cssVar);
+      const val = values[t.key];
+      if (val) {
+        document.documentElement.style.setProperty(t.cssVar, `${val.h} ${val.s}% ${val.l}%`);
+        // Set foreground colors
+        const fgVar = FOREGROUND_MAP[t.key];
+        if (fgVar) {
+          let fg: HSL;
+          if (t.key === "accent") {
+            fg = getAccentForeground(val, values.primary || val);
+          } else if (t.key === "primary") {
+            fg = val.l > 50 ? { h: val.h, s: Math.round(val.s * 0.8), l: 17 } : { h: val.h, s: 73, l: 97 };
+          } else {
+            fg = getForegroundForBg(val);
+          }
+          document.documentElement.style.setProperty(fgVar, `${fg.h} ${fg.s}% ${fg.l}%`);
+        }
       }
     });
-    setPalette(initial);
+    // Also set border/input/ring based on palette
+    const muted = values.muted;
+    if (muted) {
+      document.documentElement.style.setProperty("--border", `${muted.h} ${muted.s}% ${muted.l}%`);
+      document.documentElement.style.setProperty("--input", `${muted.h} ${muted.s}% ${muted.l}%`);
+    }
+    const primary = values.primary;
+    if (primary) {
+      document.documentElement.style.setProperty("--ring", `${primary.h} ${primary.s}% ${primary.l}%`);
+    }
   }, []);
 
-  // Apply dark mode
+  // Load initial palette
+  useEffect(() => {
+    const presetId = localStorage.getItem("palette-preset");
+    const isDark = document.documentElement.classList.contains("dark");
+    
+    if (presetId) {
+      const preset = PRESET_PALETTES.find((p) => p.id === presetId);
+      if (preset) {
+        const values = isDark ? preset.dark : preset.light;
+        setPalette(values);
+        applyCssVars(values);
+        return;
+      }
+      // Check if it's a custom generated palette
+      const savedLight = localStorage.getItem("palette-custom-light");
+      const savedDark = localStorage.getItem("palette-custom-dark");
+      if (savedLight && savedDark) {
+        const values = isDark ? JSON.parse(savedDark) : JSON.parse(savedLight);
+        setPalette(values);
+        applyCssVars(values);
+        return;
+      }
+    }
+    
+    // No preset — read computed values
+    const initial: PaletteMap = {};
+    PALETTE_TOKENS.forEach((t) => { initial[t.key] = getComputedHsl(t.cssVar); });
+    setPalette(initial);
+  }, [applyCssVars]);
+
+  // Apply dark mode + re-apply palette for correct mode
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
-  }, [dark]);
+    
+    // Re-apply palette for current mode
+    const presetId = localStorage.getItem("palette-preset");
+    if (presetId) {
+      const preset = PRESET_PALETTES.find((p) => p.id === presetId);
+      if (preset) {
+        const values = dark ? preset.dark : preset.light;
+        setPalette(values);
+        applyCssVars(values);
+        return;
+      }
+      const savedLight = localStorage.getItem("palette-custom-light");
+      const savedDark = localStorage.getItem("palette-custom-dark");
+      if (savedLight && savedDark) {
+        const values = dark ? JSON.parse(savedDark) : JSON.parse(savedLight);
+        setPalette(values);
+        applyCssVars(values);
+        return;
+      }
+    }
+    // No custom palette — clear overrides so CSS defaults apply
+    PALETTE_TOKENS.forEach((t) => {
+      document.documentElement.style.removeProperty(t.cssVar);
+      const fgVar = FOREGROUND_MAP[t.key];
+      if (fgVar) document.documentElement.style.removeProperty(fgVar);
+    });
+    ["--border", "--input", "--ring"].forEach((v) => document.documentElement.style.removeProperty(v));
+    const fresh: PaletteMap = {};
+    PALETTE_TOKENS.forEach((t) => { fresh[t.key] = getComputedHsl(t.cssVar); });
+    setPalette(fresh);
+  }, [dark, applyCssVars]);
 
   // Apply sidebar theme
   useEffect(() => {
@@ -237,61 +403,60 @@ export default function ThemeCustomizer() {
     localStorage.setItem("sidebar-theme", sidebarTheme);
   }, [sidebarTheme, customHsl]);
 
-  // Apply sidebar opacity & glass to sidebar element
+  // Apply sidebar opacity
   useEffect(() => {
     const el = document.querySelector("[data-sidebar-root]") as HTMLElement | null;
     if (!el) return;
     el.style.backgroundColor = `hsl(var(--sidebar) / ${sidebarOpacity / 100})`;
   }, [sidebarOpacity]);
 
-  // Apply palette to :root
-  useEffect(() => {
-    Object.entries(palette).forEach(([key, val]) => {
-      const token = PALETTE_TOKENS.find((t) => t.key === key);
-      if (token) {
-        document.documentElement.style.setProperty(token.cssVar, `${val.h} ${val.s}% ${val.l}%`);
-      }
-    });
-  }, [palette]);
-
-  const applyFullPalette = (values: PaletteMap) => {
-    const next: PaletteMap = {};
+  const applyPreset = (preset: PresetPalette) => {
+    const values = dark ? preset.dark : preset.light;
     PALETTE_TOKENS.forEach((t) => {
       const val = values[t.key];
-      if (val) {
-        next[t.key] = val;
-        localStorage.setItem(`palette-${t.key}`, JSON.stringify(val));
-        document.documentElement.style.setProperty(t.cssVar, `${val.h} ${val.s}% ${val.l}%`);
-      }
+      if (val) localStorage.setItem(`palette-${t.key}`, JSON.stringify(val));
     });
-    setPalette(next);
-    localStorage.setItem("palette-preset", "custom");
-  };
-
-  const applyPreset = (preset: PresetPalette) => {
-    applyFullPalette(preset.values);
     localStorage.setItem("palette-preset", preset.id);
+    // Also store both modes for the preset
+    localStorage.setItem("palette-custom-light", JSON.stringify(preset.light));
+    localStorage.setItem("palette-custom-dark", JSON.stringify(preset.dark));
+    setPalette(values);
+    applyCssVars(values);
   };
 
   const generateFromColor = (hex: string) => {
     const base = hexToHsl(hex);
-    const generated = generatePaletteFromColor(base);
-    applyFullPalette(generated);
+    const light = generateLightPalette(base);
+    const darkP = generateDarkPalette(base);
+    localStorage.setItem("palette-preset", "custom-generated");
+    localStorage.setItem("palette-custom-light", JSON.stringify(light));
+    localStorage.setItem("palette-custom-dark", JSON.stringify(darkP));
+    const values = dark ? darkP : light;
+    PALETTE_TOKENS.forEach((t) => {
+      const val = values[t.key];
+      if (val) localStorage.setItem(`palette-${t.key}`, JSON.stringify(val));
+    });
+    setPalette(values);
+    applyCssVars(values);
   };
 
   const resetPalette = () => {
     PALETTE_TOKENS.forEach((t) => {
       localStorage.removeItem(`palette-${t.key}`);
       document.documentElement.style.removeProperty(t.cssVar);
+      const fgVar = FOREGROUND_MAP[t.key];
+      if (fgVar) document.documentElement.style.removeProperty(fgVar);
     });
+    ["--border", "--input", "--ring"].forEach((v) => document.documentElement.style.removeProperty(v));
     localStorage.removeItem("palette-preset");
+    localStorage.removeItem("palette-custom-light");
+    localStorage.removeItem("palette-custom-dark");
     const fresh: PaletteMap = {};
     PALETTE_TOKENS.forEach((t) => { fresh[t.key] = getComputedHsl(t.cssVar); });
     setPalette(fresh);
   };
 
   const activePreset = localStorage.getItem("palette-preset") || "";
-
   const inputClass = "flex-1 h-1.5 accent-primary cursor-pointer";
 
   return (
@@ -319,7 +484,6 @@ export default function ThemeCustomizer() {
           <Palette className="h-4 w-4 text-primary" /> Tema da Barra Lateral
         </h3>
 
-        {/* Color swatches */}
         <div className="flex items-center gap-3">
           {SIDEBAR_THEMES.map((t) => (
             <button
@@ -337,7 +501,6 @@ export default function ThemeCustomizer() {
           </span>
         </div>
 
-        {/* Custom color picker */}
         {sidebarTheme === "custom" && (
           <div className="bg-muted/30 rounded-lg p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -355,14 +518,11 @@ export default function ThemeCustomizer() {
                 }}
                 className="h-10 w-16 rounded-lg border border-border cursor-pointer bg-transparent"
               />
-              <span className="text-xs text-muted-foreground">
-                Clique para escolher qualquer cor
-              </span>
+              <span className="text-xs text-muted-foreground">Clique para escolher qualquer cor</span>
             </div>
           </div>
         )}
 
-        {/* Opacity */}
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground w-20">Opacidade</span>
           <input
@@ -377,7 +537,6 @@ export default function ThemeCustomizer() {
           <span className="text-xs text-muted-foreground w-10 text-right">{sidebarOpacity}%</span>
         </div>
 
-        {/* Glassmorphism */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -399,7 +558,6 @@ export default function ThemeCustomizer() {
           </button>
         </div>
 
-        {/* Blur level */}
         {glassMode && (
           <div className="flex items-center gap-2 pl-6">
             <span className="text-xs text-muted-foreground">Blur:</span>
