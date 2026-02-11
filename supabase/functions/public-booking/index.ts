@@ -10,8 +10,67 @@ const corsHeaders = {
 interface Pausa { inicio: number; fim: number; }
 
 function isDateHoliday(date: string, holidays: { data: string; recorrente: boolean }[]): boolean {
-  const monthDay = date.slice(5); // MM-DD
+  const monthDay = date.slice(5);
   return holidays.some((h) => h.recorrente ? h.data.slice(5) === monthDay : h.data === date);
+}
+
+// Input sanitization helpers
+function sanitizeName(raw: string): string | null {
+  const trimmed = raw.trim().slice(0, 100);
+  // Allow letters (including accented), spaces, hyphens, apostrophes, periods
+  if (!/^[\p{L}\s\-'.]+$/u.test(trimmed)) return null;
+  if (trimmed.length < 2) return null;
+  return trimmed;
+}
+
+function sanitizePhone(raw: string): string | null {
+  const digits = raw.replace(/\D/g, "").slice(0, 15);
+  if (digits.length < 10 || digits.length > 15) return null;
+  return digits;
+}
+
+function sanitizeEmail(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim().slice(0, 255).toLowerCase();
+  const emailRegex = /^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/;
+  if (!emailRegex.test(trimmed)) return null;
+  return trimmed;
+}
+
+function isValidUUID(val: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+}
+
+function isValidDateString(val: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}/.test(val) && !isNaN(Date.parse(val));
+}
+
+// Rate limiting: 5 POST requests per IP per 15 minutes
+async function checkRateLimit(client: any, ip: string): Promise<boolean> {
+  const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  
+  const { count } = await client
+    .from("rate_limits")
+    .select("*", { count: "exact", head: true })
+    .eq("ip_address", ip)
+    .eq("endpoint", "public-booking")
+    .gte("created_at", fifteenMinAgo);
+
+  return (count ?? 0) >= 5;
+}
+
+async function recordRequest(client: any, ip: string): Promise<void> {
+  await client.from("rate_limits").insert({ ip_address: ip, endpoint: "public-booking" });
+  
+  // Cleanup old entries (older than 1 hour)
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  await client.from("rate_limits").delete().lt("created_at", oneHourAgo);
+}
+
+function getClientIP(req: Request): string {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() 
+    || req.headers.get("x-real-ip") 
+    || "unknown";
 }
 
 serve(async (req: Request) => {
@@ -42,7 +101,7 @@ serve(async (req: Request) => {
       });
     }
 
-    // GET: holidays list (for frontend date filtering)
+    // GET: holidays list
     if (req.method === "GET" && action === "holidays") {
       const { data: holidays } = await client
         .from("holidays")
@@ -54,7 +113,7 @@ serve(async (req: Request) => {
       });
     }
 
-    // GET: Available slots for a given date, service, and professional
+    // GET: Available slots
     if (req.method === "GET" && action === "slots") {
       const date = url.searchParams.get("date");
       const serviceId = url.searchParams.get("service_id");
@@ -66,7 +125,13 @@ serve(async (req: Request) => {
         });
       }
 
-      // Check if date is a holiday
+      // Validate parameter formats
+      if (!isValidDateString(date) || !isValidUUID(serviceId) || !isValidUUID(profissionalId)) {
+        return new Response(JSON.stringify({ error: "Parâmetros inválidos" }), {
+          status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
       const { data: holidays } = await client.from("holidays").select("data, recorrente");
       if (isDateHoliday(date, holidays ?? [])) {
         return new Response(JSON.stringify({ slots: [], duracao_min: 0, blocked: true, reason: "Feriado" }), {
@@ -74,7 +139,6 @@ serve(async (req: Request) => {
         });
       }
 
-      // Get service duration and category
       const { data: svc } = await client.from("services").select("duracao_min, max_alunos, categoria").eq("id", serviceId).single();
       if (!svc) {
         return new Response(JSON.stringify({ error: "Serviço não encontrado" }), {
@@ -82,7 +146,6 @@ serve(async (req: Request) => {
         });
       }
 
-      // Get category schedule (with pausas)
       const { data: schedules } = await client
         .from("category_schedules")
         .select("dias_semana, hora_inicio, hora_fim, pausas")
@@ -91,7 +154,6 @@ serve(async (req: Request) => {
       const schedule = schedules && schedules.length > 0 ? schedules[0] : null;
       const pausas: Pausa[] = schedule?.pausas && Array.isArray(schedule.pausas) ? schedule.pausas as Pausa[] : [];
 
-      // Check day of week
       const dateObj = new Date(date + "T12:00:00");
       const dayOfWeek = dateObj.getDay();
       if (schedule && !schedule.dias_semana.includes(dayOfWeek)) {
@@ -104,7 +166,6 @@ serve(async (req: Request) => {
       const schedEnd = schedule?.hora_fim ?? 20;
       const maxAlunos = svc.max_alunos ?? 1;
 
-      // Get existing appointments for that professional on that date
       const dayStart = `${date}T00:00:00`;
       const dayEnd = `${date}T23:59:59`;
 
@@ -116,7 +177,6 @@ serve(async (req: Request) => {
         .lte("inicio_em", dayEnd)
         .not("status", "in", '("cancelado","faltou")');
 
-      // Count how many appointments exist per slot for the same service (for group classes)
       const slotCounts: Record<string, number> = {};
       (existing ?? []).forEach((a: any) => {
         if (a.service_id === serviceId) {
@@ -125,12 +185,10 @@ serve(async (req: Request) => {
         }
       });
 
-      // Generate available slots within schedule hours, excluding breaks
       const slots: string[] = [];
       const duration = svc.duracao_min;
 
       for (let h = schedStart; h < schedEnd; h++) {
-        // Skip hours during breaks
         const inBreak = pausas.some((p) => h >= p.inicio && h < p.fim);
         if (inBreak) continue;
 
@@ -138,7 +196,6 @@ serve(async (req: Request) => {
           const slotHour = h + m / 60;
           if (slotHour >= schedEnd) break;
 
-          // Also check if the slot end falls in a break
           const slotEndHour = slotHour + duration / 60;
           const endInBreak = pausas.some((p) => slotEndHour > p.inicio && slotHour < p.fim);
           if (endInBreak) continue;
@@ -146,7 +203,6 @@ serve(async (req: Request) => {
           const slotStart = `${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
           const slotEnd = new Date(new Date(slotStart).getTime() + duration * 60000).toISOString();
 
-          // Check if professional has any conflicting appointment (different service)
           const hasConflict = (existing ?? []).some((a: any) => {
             if (a.service_id === serviceId) return false;
             const aStart = new Date(a.inicio_em).getTime();
@@ -158,7 +214,6 @@ serve(async (req: Request) => {
 
           if (hasConflict) continue;
 
-          // Check capacity for group classes
           const count = slotCounts[slotStart] || 0;
           if (count >= maxAlunos) continue;
 
@@ -171,9 +226,20 @@ serve(async (req: Request) => {
       });
     }
 
-    // POST: Create booking
+    // POST: Create booking (with rate limiting and input sanitization)
     if (req.method === "POST") {
-      const { nome, telefone, email, service_id, profissional_id, inicio_em } = await req.json();
+      const clientIP = getClientIP(req);
+
+      // Rate limit check
+      const isLimited = await checkRateLimit(client, clientIP);
+      if (isLimited) {
+        return new Response(JSON.stringify({ error: "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente." }), {
+          status: 429, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      const body = await req.json();
+      const { nome, telefone, email, service_id, profissional_id, inicio_em } = body;
 
       if (!nome || !telefone || !service_id || !profissional_id || !inicio_em) {
         return new Response(JSON.stringify({ error: "Campos obrigatórios: nome, telefone, service_id, profissional_id, inicio_em" }), {
@@ -181,23 +247,43 @@ serve(async (req: Request) => {
         });
       }
 
-      // Validate inputs
-      const nomeTrim = String(nome).trim().slice(0, 100);
-      const telTrim = String(telefone).replace(/\D/g, "").slice(0, 11);
-      const emailTrim = email ? String(email).trim().slice(0, 255) : null;
-
-      if (nomeTrim.length < 2) {
-        return new Response(JSON.stringify({ error: "Nome deve ter pelo menos 2 caracteres" }), {
+      // Validate and sanitize inputs
+      const nomeSafe = sanitizeName(String(nome));
+      if (!nomeSafe) {
+        return new Response(JSON.stringify({ error: "Nome inválido. Use apenas letras, espaços e hífens (mín. 2 caracteres)" }), {
           status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
-      if (telTrim.length < 10) {
+
+      const telSafe = sanitizePhone(String(telefone));
+      if (!telSafe) {
         return new Response(JSON.stringify({ error: "Telefone inválido" }), {
           status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
 
-      // Get service duration and category
+      const emailSafe = email ? sanitizeEmail(String(email)) : null;
+      if (email && !emailSafe) {
+        return new Response(JSON.stringify({ error: "Email inválido" }), {
+          status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      if (!isValidUUID(String(service_id)) || !isValidUUID(String(profissional_id))) {
+        return new Response(JSON.stringify({ error: "IDs inválidos" }), {
+          status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      if (!isValidDateString(String(inicio_em))) {
+        return new Response(JSON.stringify({ error: "Data/hora inválida" }), {
+          status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      // Record rate limit
+      await recordRequest(client, clientIP);
+
       const { data: svc } = await client.from("services").select("duracao_min, categoria").eq("id", service_id).single();
       if (!svc) {
         return new Response(JSON.stringify({ error: "Serviço não encontrado" }), {
@@ -205,8 +291,7 @@ serve(async (req: Request) => {
         });
       }
 
-      // Check holiday
-      const bookingDate = inicio_em.slice(0, 10);
+      const bookingDate = String(inicio_em).slice(0, 10);
       const { data: holidays } = await client.from("holidays").select("data, recorrente");
       if (isDateHoliday(bookingDate, holidays ?? [])) {
         return new Response(JSON.stringify({ error: "Não é possível agendar em feriados" }), {
@@ -214,7 +299,6 @@ serve(async (req: Request) => {
         });
       }
 
-      // Validate against category schedule (days, hours, breaks)
       const { data: schedules } = await client.from("category_schedules").select("dias_semana, hora_inicio, hora_fim, pausas").eq("categoria", svc.categoria);
       if (schedules && schedules.length > 0) {
         const schedule = schedules[0];
@@ -227,15 +311,14 @@ serve(async (req: Request) => {
           });
         }
         if (hour < schedule.hora_inicio || hour >= schedule.hora_fim) {
-          return new Response(JSON.stringify({ error: `Horário fora da janela permitida (${schedule.hora_inicio}h - ${schedule.hora_fim}h)` }), {
+          return new Response(JSON.stringify({ error: "Horário fora da janela permitida" }), {
             status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
           });
         }
-        // Check breaks
         const pausas: Pausa[] = schedule.pausas && Array.isArray(schedule.pausas) ? schedule.pausas as Pausa[] : [];
         for (const pausa of pausas) {
           if (hour >= pausa.inicio && hour < pausa.fim) {
-            return new Response(JSON.stringify({ error: `Horário de pausa (${pausa.inicio}h - ${pausa.fim}h)` }), {
+            return new Response(JSON.stringify({ error: "Horário de pausa" }), {
               status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
             });
           }
@@ -244,12 +327,11 @@ serve(async (req: Request) => {
 
       const fimEm = new Date(new Date(inicio_em).getTime() + svc.duracao_min * 60000).toISOString();
 
-      // Find or create client
       let clientId: string;
       const { data: existingClient } = await client
         .from("clients")
         .select("id")
-        .eq("telefone", telTrim)
+        .eq("telefone", telSafe)
         .limit(1)
         .maybeSingle();
 
@@ -258,7 +340,7 @@ serve(async (req: Request) => {
       } else {
         const { data: newClient, error: clientError } = await client
           .from("clients")
-          .insert({ nome: nomeTrim, telefone: telTrim, email: emailTrim })
+          .insert({ nome: nomeSafe, telefone: telSafe, email: emailSafe })
           .select("id")
           .single();
 
@@ -270,7 +352,6 @@ serve(async (req: Request) => {
         clientId = newClient.id;
       }
 
-      // Create appointment
       const { data: appt, error: apptError } = await client
         .from("appointments")
         .insert({
@@ -286,7 +367,7 @@ serve(async (req: Request) => {
         .single();
 
       if (apptError) {
-        return new Response(JSON.stringify({ error: apptError.message }), {
+        return new Response(JSON.stringify({ error: "Erro ao criar agendamento" }), {
           status: 500, headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
@@ -300,7 +381,9 @@ serve(async (req: Request) => {
       status: 404, headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    // Generic error - don't leak internal details
+    console.error("public-booking error:", err);
+    return new Response(JSON.stringify({ error: "Erro interno do servidor" }), {
       status: 500, headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
