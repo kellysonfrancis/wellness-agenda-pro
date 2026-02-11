@@ -16,12 +16,13 @@ interface Pausa {
   fim: number;
 }
 
-interface CategorySchedule {
-  categoria: string;
-  dias_semana: number[];
+interface ProfessionalSchedule {
+  professional_id: string;
+  dia_semana: number;
   hora_inicio: number;
   hora_fim: number;
   pausas: Pausa[];
+  ativo: boolean;
 }
 
 interface Holiday {
@@ -122,17 +123,17 @@ export default function Agenda() {
   } = useAgendaData();
   const { plans, makeupClasses, createMakeupClass, refetch: refetchEntitlements } = useEntitlements();
 
-  const { data: categorySchedules = [] } = useQuery<CategorySchedule[]>({
-    queryKey: ["category-schedules"],
+  const { data: professionalSchedules = [] } = useQuery<ProfessionalSchedule[]>({
+    queryKey: ["professional-schedules"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("category_schedules")
-        .select("categoria, dias_semana, hora_inicio, hora_fim, pausas");
+        .from("professional_schedules")
+        .select("professional_id, dia_semana, hora_inicio, hora_fim, pausas, ativo");
       if (error) throw error;
       return (data || []).map((row: any) => ({
         ...row,
         pausas: Array.isArray(row.pausas) ? row.pausas : [],
-      })) as CategorySchedule[];
+      })) as ProfessionalSchedule[];
     },
   });
 
@@ -147,11 +148,14 @@ export default function Agenda() {
     },
   });
 
-  const scheduleMap = useMemo(() => {
-    const map: Record<string, CategorySchedule> = {};
-    categorySchedules.forEach((s) => (map[s.categoria] = s));
+  const profScheduleMap = useMemo(() => {
+    const map: Record<string, ProfessionalSchedule[]> = {};
+    professionalSchedules.filter(s => s.ativo).forEach((s) => {
+      if (!map[s.professional_id]) map[s.professional_id] = [];
+      map[s.professional_id].push(s);
+    });
     return map;
-  }, [categorySchedules]);
+  }, [professionalSchedules]);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("week");
@@ -193,19 +197,19 @@ export default function Agenda() {
     return h?.descricao || "Feriado";
   }, [holidays]);
 
-  // Check if an hour is within schedule for the filtered category (including breaks)
+  // Check if an hour is within schedule for the filtered professional (including breaks)
   const isHourInSchedule = useCallback((hour: number, dayOfWeek: number) => {
-    if (!filterCategoria) return true;
-    const sched = scheduleMap[filterCategoria];
-    if (!sched) return true;
-    if (!sched.dias_semana.includes(dayOfWeek)) return false;
-    if (hour < sched.hora_inicio || hour >= sched.hora_fim) return false;
-    // Check breaks
-    for (const pausa of sched.pausas || []) {
+    if (!filterProfissional) return true;
+    const scheds = profScheduleMap[filterProfissional];
+    if (!scheds || scheds.length === 0) return true;
+    const daySched = scheds.find(s => s.dia_semana === dayOfWeek);
+    if (!daySched) return false;
+    if (hour < daySched.hora_inicio || hour >= daySched.hora_fim) return false;
+    for (const pausa of daySched.pausas || []) {
       if (hour >= pausa.inicio && hour < pausa.fim) return false;
     }
     return true;
-  }, [filterCategoria, scheduleMap]);
+  }, [filterProfissional, profScheduleMap]);
 
   // WhatsApp confirmation statuses per appointment
   const [waStatuses, setWaStatuses] = useState<Record<string, string>>({});
@@ -329,20 +333,21 @@ export default function Agenda() {
       return;
     }
 
-    // Validate: block breaks and off-schedule hours
-    const catSched = scheduleMap[svc.categoria];
-    if (catSched) {
+    // Validate: block breaks and off-schedule hours (by professional)
+    const profScheds = profScheduleMap[form.profissionalId];
+    if (profScheds && profScheds.length > 0) {
       const dayOfWeek = startDate.getDay();
-      if (!catSched.dias_semana.includes(dayOfWeek)) {
-        toast({ title: "Dia não permitido", description: "Esta categoria não atende neste dia da semana", variant: "destructive" });
+      const daySched = profScheds.find(s => s.dia_semana === dayOfWeek);
+      if (!daySched) {
+        toast({ title: "Dia não permitido", description: "Este profissional não atende neste dia da semana", variant: "destructive" });
         return;
       }
       const hour = startDate.getHours();
-      if (hour < catSched.hora_inicio || hour >= catSched.hora_fim) {
-        toast({ title: "Horário fora do expediente", description: `Permitido: ${catSched.hora_inicio}h – ${catSched.hora_fim}h`, variant: "destructive" });
+      if (hour < daySched.hora_inicio || hour >= daySched.hora_fim) {
+        toast({ title: "Horário fora do expediente", description: `Permitido: ${daySched.hora_inicio}h – ${daySched.hora_fim}h`, variant: "destructive" });
         return;
       }
-      for (const pausa of catSched.pausas || []) {
+      for (const pausa of daySched.pausas || []) {
         if (hour >= pausa.inicio && hour < pausa.fim) {
           toast({ title: "Horário de pausa", description: `Pausa configurada: ${pausa.inicio}h – ${pausa.fim}h`, variant: "destructive" });
           return;
