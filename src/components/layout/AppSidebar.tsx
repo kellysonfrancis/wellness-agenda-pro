@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Calendar, Users, DollarSign, Sparkles,
   Package, Settings, CalendarPlus, CalendarCheck, ShoppingBag,
   LogOut, Menu, X, BarChart3, Receipt, UserCog, Tags, Stethoscope, HandCoins, ShoppingCart, AlertTriangle, Activity, UserX, TrendingUp, ClipboardList, ListOrdered,
-  MessageSquare, ChevronDown, FolderOpen, FileText
+  MessageSquare, ChevronDown, FolderOpen, FileText, Sun, Moon
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
@@ -277,10 +277,22 @@ export default function AppSidebar() {
       </nav>
 
       <div className="border-t border-sidebar-border pt-4 mt-4">
-        <div className="px-3 mb-3">
+        <div className="px-3 mb-2">
           <p className="text-sm font-medium text-sidebar-foreground">{profile.nome || profile.email}</p>
           <p className="text-xs text-sidebar-foreground/60 capitalize">{roles.join(", ") || "sem papel"}</p>
         </div>
+        <button
+          onClick={() => {
+            document.documentElement.classList.toggle("dark");
+            localStorage.setItem("theme", document.documentElement.classList.contains("dark") ? "dark" : "light");
+          }}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground transition-colors w-full"
+        >
+          <Sun className="h-4 w-4 dark:hidden" />
+          <Moon className="h-4 w-4 hidden dark:block" />
+          <span className="dark:hidden">Modo Escuro</span>
+          <span className="hidden dark:inline">Modo Claro</span>
+        </button>
         <button
           onClick={logout}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground transition-colors w-full"
