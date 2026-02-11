@@ -3,9 +3,10 @@ import GlobalLayout from "@/components/layout/GlobalLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { createAndDownloadExcel } from "@/lib/excelExport";
 import {
   Users, Search, Plus, Phone, Mail, Loader2, X, Pencil, Save, Trash2, Calendar,
-  Filter, UserCheck, UserX
+  Filter, UserCheck, UserX, Download
 } from "lucide-react";
 
 interface DBClient {
@@ -243,6 +244,35 @@ export default function Clientes() {
     }
   };
 
+  const handleExport = async () => {
+    if (filtered.length === 0) {
+      toast({ title: "Nenhum cliente para exportar", variant: "destructive" });
+      return;
+    }
+
+    const rows: (string | number | null | undefined)[][] = [
+      ["Nome", "Telefone", "E-mail", "Nascimento", "Categorias", "Status", "Observações"],
+    ];
+
+    for (const c of filtered) {
+      const catInfo = clientCategories.get(c.id);
+      const cats = catInfo?.categorias.map(cat => CAT_LABELS[cat] || cat).join(", ") || "—";
+      const status = catInfo ? (catInfo.ativo ? "Ativo" : "Inativo") : "Sem plano";
+      const nasc = c.data_nascimento
+        ? new Date(c.data_nascimento + "T00:00:00").toLocaleDateString("pt-BR")
+        : "";
+
+      rows.push([c.nome, c.telefone, c.email || "", nasc, cats, status, c.observacoes || ""]);
+    }
+
+    const filterLabel = filterCategoria !== "todas" ? `_${filterCategoria}` : "";
+    const statusLabel = filterStatus !== "todos" ? `_${filterStatus}` : "";
+    const filename = `clientes${filterLabel}${statusLabel}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    await createAndDownloadExcel([{ name: "Clientes", data: rows }], filename);
+    toast({ title: `${filtered.length} clientes exportados!` });
+  };
+
   return (
     <GlobalLayout>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -252,9 +282,14 @@ export default function Clientes() {
             {clients.length} cadastrados · <span className="text-primary font-medium">{totalAtivos} ativos</span>
           </p>
         </div>
-        <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
-          <Plus className="h-4 w-4" /> Novo Cliente
-        </button>
+        <div className="flex gap-2">
+          <button onClick={handleExport} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">
+            <Download className="h-4 w-4" /> Exportar
+          </button>
+          <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+            <Plus className="h-4 w-4" /> Novo Cliente
+          </button>
+        </div>
       </div>
 
       {/* Search + Filters */}
