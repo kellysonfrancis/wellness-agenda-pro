@@ -1194,7 +1194,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_my_assigned_client_ids: { Args: never; Returns: string[] }
       get_my_client_ids: { Args: never; Returns: string[] }
+      get_my_professional_ids: { Args: never; Returns: string[] }
       get_my_roles: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"][]
