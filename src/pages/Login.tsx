@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -48,9 +48,16 @@ function phoneMask(value: string) {
 }
 
 export default function Login() {
-  const { login, signup, loading: authLoading } = useAuth();
+  const { user, login, signup, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [isSignup, setIsSignup] = useState(false);
+
+  // Redirect authenticated users away from login
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
