@@ -283,8 +283,25 @@ export default function AppSidebar() {
         </div>
         <button
           onClick={() => {
-            document.documentElement.classList.toggle("dark");
-            localStorage.setItem("theme", document.documentElement.classList.contains("dark") ? "dark" : "light");
+            const next = !document.documentElement.classList.contains("dark");
+            document.documentElement.classList.toggle("dark", next);
+            localStorage.setItem("theme", next ? "dark" : "light");
+
+            // Re-apply palette for the new mode (same logic as ThemeCustomizer)
+            const presetId = localStorage.getItem("palette-preset");
+            if (presetId) {
+              const savedLight = localStorage.getItem("palette-custom-light");
+              const savedDark = localStorage.getItem("palette-custom-dark");
+              if (savedLight && savedDark) {
+                const values = next ? JSON.parse(savedDark) : JSON.parse(savedLight);
+                const tokens = ["primary","secondary","accent","background","card","muted","destructive","success","warning","info"];
+                const vars = ["--primary","--secondary","--accent","--background","--card","--muted","--destructive","--success","--warning","--info"];
+                tokens.forEach((key, i) => {
+                  const val = values[key];
+                  if (val) document.documentElement.style.setProperty(vars[i], `${val.h} ${val.s}% ${val.l}%`);
+                });
+              }
+            }
           }}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground transition-colors w-full"
         >
