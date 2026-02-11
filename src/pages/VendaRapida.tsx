@@ -69,6 +69,15 @@ export default function VendaRapida() {
     staleTime: 300_000,
   });
 
+  const { data: services = [] } = useQuery({
+    queryKey: ["services-active"],
+    queryFn: async () => {
+      const { data } = await supabase.from("services").select("id, nome, categoria, preco_base").eq("ativo", true).order("categoria, nome");
+      return data ?? [];
+    },
+    staleTime: 300_000,
+  });
+
   const { data: mySales = [] } = useQuery({
     queryKey: ["my-sales", user?.id],
     queryFn: async () => {
@@ -102,7 +111,16 @@ export default function VendaRapida() {
   }, [defaultSellerId, defaultSellerType, sellerId]);
 
   const filteredPlans = useMemo(() => plans.filter((p) => p.categoria === categoria), [plans, categoria]);
+  const filteredServices = useMemo(() => services.filter((s) => s.categoria === categoria), [services, categoria]);
 
+  // Unified items for selection
+  type SaleItem = { id: string; nome: string; preco: number; type: "plano" | "servico" };
+  const allItems = useMemo<SaleItem[]>(() => [
+    ...filteredPlans.map((p) => ({ id: `plan_${p.id}`, nome: p.nome, preco: Number(p.preco), type: "plano" as const })),
+    ...filteredServices.map((s) => ({ id: `svc_${s.id}`, nome: s.nome, preco: Number(s.preco_base), type: "servico" as const })),
+  ], [filteredPlans, filteredServices]);
+
+  const selectedItem = allItems.find((i) => i.id === selectedPlanId);
   const currentRate = rates.find((r) => r.categoria === categoria);
   const perc = currentRate ? Number(currentRate.percentual) : 0;
   const comissaoPreview = valorVenda ? (Number(valorVenda) * perc) / 100 : 0;
@@ -247,30 +265,43 @@ export default function VendaRapida() {
             </Select>
           </div>
 
-          {/* Plan/Package */}
+          {/* Plan/Package/Service */}
           <div>
-            <label className="text-sm font-medium mb-1.5 block">Pacote / Plano</label>
+            <label className="text-sm font-medium mb-1.5 block">Plano / Serviço</label>
             <Popover open={planOpen} onOpenChange={setPlanOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" role="combobox" aria-expanded={planOpen} className="w-full justify-between font-normal">
-                  {selectedPlanId ? filteredPlans.find((p) => p.id === selectedPlanId)?.nome : "Selecione o plano"}
+                  {selectedItem ? selectedItem.nome : "Selecione"}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Buscar plano..." />
+                  <CommandInput placeholder="Buscar plano ou serviço..." />
                   <CommandList>
-                    <CommandEmpty>Nenhum plano nesta categoria.</CommandEmpty>
-                    <CommandGroup>
-                      {filteredPlans.map((p) => (
-                        <CommandItem key={p.id} value={p.nome} onSelect={() => { setSelectedPlanId(p.id); setValorVenda(String(p.preco)); setPlanOpen(false); }}>
-                          <Check className={cn("mr-2 h-4 w-4", selectedPlanId === p.id ? "opacity-100" : "opacity-0")} />
-                          {p.nome}
-                          <span className="text-muted-foreground text-xs ml-auto">R$ {Number(p.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
+                    <CommandEmpty>Nenhum item nesta categoria.</CommandEmpty>
+                    {filteredPlans.length > 0 && (
+                      <CommandGroup heading="📦 Planos / Pacotes">
+                        {filteredPlans.map((p) => (
+                          <CommandItem key={`plan_${p.id}`} value={`${p.nome} plano`} onSelect={() => { setSelectedPlanId(`plan_${p.id}`); setValorVenda(String(p.preco)); setPlanOpen(false); }}>
+                            <Check className={cn("mr-2 h-4 w-4", selectedPlanId === `plan_${p.id}` ? "opacity-100" : "opacity-0")} />
+                            {p.nome}
+                            <span className="text-muted-foreground text-xs ml-auto">R$ {Number(p.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                    {filteredServices.length > 0 && (
+                      <CommandGroup heading="⚡ Serviços">
+                        {filteredServices.map((s) => (
+                          <CommandItem key={`svc_${s.id}`} value={`${s.nome} servico`} onSelect={() => { setSelectedPlanId(`svc_${s.id}`); setValorVenda(String(s.preco_base)); setPlanOpen(false); }}>
+                            <Check className={cn("mr-2 h-4 w-4", selectedPlanId === `svc_${s.id}` ? "opacity-100" : "opacity-0")} />
+                            {s.nome}
+                            <span className="text-muted-foreground text-xs ml-auto">R$ {Number(s.preco_base).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
                   </CommandList>
                 </Command>
               </PopoverContent>
