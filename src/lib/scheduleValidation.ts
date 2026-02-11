@@ -77,3 +77,56 @@ export async function validateAppointmentSchedule(
   const schedules = await fetchProfessionalSchedules();
   return validateAgainstSchedule(schedules, professionalId, date);
 }
+
+/**
+ * Check capacity: how many appointments exist for a given service+professional at a specific time.
+ * Returns null if within capacity, or an error message if over the limit.
+ */
+export async function validateCapacity(
+  serviceId: string,
+  professionalId: string,
+  startTime: string,
+  endTime: string,
+  excludeAppointmentId?: string,
+): Promise<string | null> {
+  // Fetch the service to get max_alunos
+  const { data: svc } = await supabase
+    .from("services")
+    .select("max_alunos, nome, categoria")
+    .eq("id", serviceId)
+    .single();
+
+  if (!svc) return null;
+
+  const maxCapacity = svc.max_alunos;
+
+  // If no limit set, for fisioterapia default to 1 per professional
+  const effectiveMax = maxCapacity ?? (svc.categoria === "fisioterapia" ? 1 : null);
+
+  if (!effectiveMax) return null; // No limit
+
+  // Count existing appointments at the same time slot
+  let query = supabase
+    .from("appointments")
+    .select("id")
+    .eq("service_id", serviceId)
+    .eq("profissional_id", professionalId)
+    .in("status", ["reservado", "confirmado", "em_atendimento"])
+    .lt("inicio_em", endTime)
+    .gt("fim_em", startTime);
+
+  if (excludeAppointmentId) {
+    query = query.neq("id", excludeAppointmentId);
+  }
+
+  const { data: existing } = await query;
+  const count = existing?.length ?? 0;
+
+  if (count >= effectiveMax) {
+    return effectiveMax === 1
+      ? `Este horário já está ocupado para ${svc.nome}. Apenas 1 atendimento por vez.`
+      : `Capacidade máxima atingida (${count}/${effectiveMax} vagas ocupadas).`;
+  }
+
+  return null;
+}

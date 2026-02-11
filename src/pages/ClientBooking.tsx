@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarPlus, ChevronRight, CheckCircle2 } from "lucide-react";
 import { addMinutes, format, setHours, setMinutes, startOfDay, addDays, isBefore } from "date-fns";
-import { validateAppointmentSchedule } from "@/lib/scheduleValidation";
+import { validateAppointmentSchedule, validateCapacity } from "@/lib/scheduleValidation";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
@@ -118,6 +118,12 @@ export default function ClientBooking() {
         const scheduleError = await validateAppointmentSchedule(profId, inicio);
         if (scheduleError) throw new Error(scheduleError);
       }
+
+      // Validate capacity (max alunos per slot)
+      const capacityError = await validateCapacity(
+        serviceId, profId, inicio.toISOString(), fim.toISOString()
+      );
+      if (capacityError) throw new Error(capacityError);
 
       const { error } = await supabase.from("appointments").insert({
         client_id: client.id,
