@@ -10,7 +10,7 @@ import { differenceInDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
+import { exportJsonToExcel } from "@/lib/excelExport";
 
 type AgingBucket = "0-30" | "31-60" | "61-90" | "90+";
 
@@ -110,10 +110,7 @@ export default function Inadimplencia() {
     }));
 
   const handleExportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(exportRows());
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Inadimplência");
-    XLSX.writeFile(wb, `inadimplencia_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    exportJsonToExcel(exportRows(), "Inadimplência", `inadimplencia_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
   };
 
   const handleExportPDF = () => {

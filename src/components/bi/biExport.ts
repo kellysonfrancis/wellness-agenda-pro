@@ -1,6 +1,6 @@
-import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { createAndDownloadExcel } from "@/lib/excelExport";
 
 interface BIExportData {
   revenue: { mes: string; receita: number }[];
@@ -23,46 +23,47 @@ function fmt(v: number) {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function exportToExcel(data: BIExportData) {
-  const wb = XLSX.utils.book_new();
-
-  // KPIs
-  const kpis = [
-    ["Métrica", "Valor"],
-    ["Receita Total", fmt(data.totalRevenue)],
-    ["Ticket Médio", fmt(data.avgTicket)],
-    ["Clientes Ativos", data.activeClients],
-    ["Despesas Totais", fmt(data.totalExpenses)],
-    ["Lucro", fmt(data.profit)],
-    ["Margem (%)", data.profitMargin.toFixed(1)],
+export async function exportToExcel(data: BIExportData) {
+  const sheets = [
+    {
+      name: "KPIs",
+      data: [
+        ["Métrica", "Valor"],
+        ["Receita Total", fmt(data.totalRevenue)],
+        ["Ticket Médio", fmt(data.avgTicket)],
+        ["Clientes Ativos", data.activeClients],
+        ["Despesas Totais", fmt(data.totalExpenses)],
+        ["Lucro", fmt(data.profit)],
+        ["Margem (%)", data.profitMargin.toFixed(1)],
+      ] as (string | number)[][],
+    },
+    {
+      name: "Receita x Despesas",
+      data: [["Mês", "Receita", "Despesas", "Lucro"], ...data.revenueVsExpenses.map((r) => [r.mes, r.receita, r.despesas, r.lucro])] as (string | number)[][],
+    },
+    {
+      name: "Receita por Categoria",
+      data: [["Categoria", "Valor"], ...data.catRev.map((r) => [r.name, r.value])] as (string | number)[][],
+    },
+    {
+      name: "Status Pagamentos",
+      data: [["Status", "Quantidade"], ...data.payStatus.map((r) => [r.name, r.value])] as (string | number)[][],
+    },
+    {
+      name: "Despesas por Categoria",
+      data: [["Categoria", "Valor"], ...data.expenseByCategory.map((r) => [r.name, r.value])] as (string | number)[][],
+    },
+    {
+      name: "LTV",
+      data: [["Cliente", "LTV"], ...data.ltv.map((r) => [r.cliente, r.ltv])] as (string | number)[][],
+    },
+    {
+      name: "Fluxo de Caixa",
+      data: [["Conta", "Entradas", "Saídas", "Saldo"], ...data.cashFlowByAccount.map((r) => [r.name, r.entradas, r.saidas, r.saldo])] as (string | number)[][],
+    },
   ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(kpis), "KPIs");
 
-  // Revenue vs Expenses
-  const rve = [["Mês", "Receita", "Despesas", "Lucro"], ...data.revenueVsExpenses.map((r) => [r.mes, r.receita, r.despesas, r.lucro])];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rve), "Receita x Despesas");
-
-  // Category revenue
-  const cr = [["Categoria", "Valor"], ...data.catRev.map((r) => [r.name, r.value])];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cr), "Receita por Categoria");
-
-  // Payment status
-  const ps = [["Status", "Quantidade"], ...data.payStatus.map((r) => [r.name, r.value])];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ps), "Status Pagamentos");
-
-  // Expense by category
-  const ec = [["Categoria", "Valor"], ...data.expenseByCategory.map((r) => [r.name, r.value])];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ec), "Despesas por Categoria");
-
-  // LTV
-  const ltvSheet = [["Cliente", "LTV"], ...data.ltv.map((r) => [r.cliente, r.ltv])];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ltvSheet), "LTV");
-
-  // Cash flow
-  const cf = [["Conta", "Entradas", "Saídas", "Saldo"], ...data.cashFlowByAccount.map((r) => [r.name, r.entradas, r.saidas, r.saldo])];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cf), "Fluxo de Caixa");
-
-  XLSX.writeFile(wb, `BI_Relatorio_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  await createAndDownloadExcel(sheets, `BI_Relatorio_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 export function exportToPDF(data: BIExportData) {
@@ -79,7 +80,6 @@ export function exportToPDF(data: BIExportData) {
   doc.setTextColor(0);
   y += 10;
 
-  // KPIs
   doc.setFontSize(12);
   doc.text("Indicadores Principais", 14, y);
   y += 2;
@@ -100,7 +100,6 @@ export function exportToPDF(data: BIExportData) {
   });
   y = (doc as any).lastAutoTable.finalY + 10;
 
-  // Revenue vs Expenses
   doc.setFontSize(12);
   doc.text("Receita × Despesas (Mensal)", 14, y);
   y += 2;
@@ -114,7 +113,6 @@ export function exportToPDF(data: BIExportData) {
   });
   y = (doc as any).lastAutoTable.finalY + 10;
 
-  // Category revenue
   if (data.catRev.length > 0) {
     doc.setFontSize(12);
     doc.text("Receita por Categoria", 14, y);
@@ -130,7 +128,6 @@ export function exportToPDF(data: BIExportData) {
     y = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  // Expense by category
   if (data.expenseByCategory.length > 0) {
     if (y > 240) { doc.addPage(); y = 15; }
     doc.setFontSize(12);
@@ -147,7 +144,6 @@ export function exportToPDF(data: BIExportData) {
     y = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  // LTV
   if (data.ltv.length > 0) {
     if (y > 220) { doc.addPage(); y = 15; }
     doc.setFontSize(12);
@@ -164,7 +160,6 @@ export function exportToPDF(data: BIExportData) {
     y = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  // Cash flow
   if (data.cashFlowByAccount.length > 0) {
     if (y > 220) { doc.addPage(); y = 15; }
     doc.setFontSize(12);

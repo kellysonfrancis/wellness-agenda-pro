@@ -12,7 +12,7 @@ import { ptBR } from "date-fns/locale";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
+import { exportJsonToExcel } from "@/lib/excelExport";
 
 type RiskLevel = "baixo" | "medio" | "alto" | "critico";
 
@@ -152,10 +152,7 @@ export default function Churn() {
     }));
 
   const handleExportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(exportData());
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Churn");
-    XLSX.writeFile(wb, `churn_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    exportJsonToExcel(exportData(), "Churn", `churn_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
   };
 
   const handleExportPDF = () => {
