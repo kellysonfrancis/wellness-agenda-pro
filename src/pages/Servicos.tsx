@@ -267,7 +267,11 @@ export default function Servicos() {
               {s.max_alunos && (
                 <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
                   <Users className="h-3.5 w-3.5" />
-                  <span>Máx. {s.max_alunos} aluno{s.max_alunos > 1 ? "s" : ""} por horário</span>
+                  <span>
+                    {s.max_alunos === 1
+                      ? "Atendimento individual (1 por horário)"
+                      : `Máx. ${s.max_alunos} aluno${s.max_alunos > 1 ? "s" : ""} por horário`}
+                  </span>
                 </div>
               )}
               <div className="flex gap-2 mt-4">
@@ -362,7 +366,9 @@ export default function Servicos() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm text-muted-foreground" htmlFor="svc-max">Máx. Alunos</label>
+                  <label className="text-sm text-muted-foreground" htmlFor="svc-max">
+                    Máx. Alunos/Pacientes por Horário
+                  </label>
                   <input
                     id="svc-max"
                     type="number"
@@ -371,10 +377,19 @@ export default function Servicos() {
                     value={form.max_alunos}
                     onChange={(e) => setForm({ ...form, max_alunos: e.target.value === "" ? "" : Number(e.target.value) })}
                     className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-                    placeholder="Opcional"
+                    placeholder={form.categoria === "pilates" ? "Ex: 5" : "1"}
                   />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {form.categoria === "pilates"
+                      ? "🧘 Pilates: defina a capacidade da turma (ex: 5 alunos). Duo = 2, Trio = 3, Grupo = até 5."
+                      : form.categoria === "fisioterapia"
+                      ? "🩺 Fisioterapia: geralmente 1 paciente por horário por profissional."
+                      : form.categoria === "estetica"
+                      ? "✨ Estética: geralmente 1 paciente por horário por profissional."
+                      : "Deixe vazio para não limitar, ou defina o máximo de atendimentos simultâneos."}
+                  </p>
                 </div>
-                <div className="flex items-end pb-1">
+                <div className="flex items-end pb-8">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
