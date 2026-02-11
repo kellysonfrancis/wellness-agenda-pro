@@ -7,6 +7,17 @@ import { lovable } from "@/integrations/lovable/index";
 
 const inputClass = "mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30";
 
+function translateAuthError(msg: string): string {
+  if (msg.includes("Password should contain")) return "A senha deve conter pelo menos uma letra minúscula, uma maiúscula, um número e um caractere especial.";
+  if (msg.includes("Password is known to be weak")) return "Essa senha é muito fraca e fácil de adivinhar. Escolha uma senha mais segura.";
+  if (msg.includes("User already registered")) return "Este e-mail já está cadastrado.";
+  if (msg.includes("Invalid login credentials")) return "E-mail ou senha incorretos.";
+  if (msg.includes("Email not confirmed")) return "E-mail ainda não confirmado. Verifique sua caixa de entrada.";
+  if (msg.includes("Signup requires a valid password")) return "A senha informada não é válida.";
+  if (msg.includes("Unable to validate email")) return "Endereço de e-mail inválido.";
+  return msg;
+}
+
 function validarCPF(cpf: string): boolean {
   const digits = cpf.replace(/\D/g, "");
   if (digits.length !== 11 || /^(\d)\1{10}$/.test(digits)) return false;
@@ -96,7 +107,9 @@ export default function Login() {
         role: tipoConta === "cliente" ? "cliente" : "funcionario_pendente",
       });
       if (err) {
-        setError(err);
+        // Translate common Supabase auth errors to Portuguese
+        const translated = translateAuthError(err);
+        setError(translated);
       } else {
         setSuccess(
           tipoConta === "funcionario"
@@ -108,7 +121,7 @@ export default function Login() {
     } else {
       const { error: err } = await login(email, password);
       if (err) {
-        setError(err);
+        setError(translateAuthError(err));
       } else {
         // Check if user has any roles assigned
         const { data: roles } = await supabase.rpc("get_my_roles");
