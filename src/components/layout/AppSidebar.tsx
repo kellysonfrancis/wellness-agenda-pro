@@ -107,6 +107,14 @@ export default function AppSidebar() {
   const { profile, roles, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const { badges, changedPaths } = useSidebarBadges();
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
+
+  // Sync with external theme changes (e.g. from ThemeCustomizer)
+  useEffect(() => {
+    const handler = () => setIsDark(document.documentElement.classList.contains("dark"));
+    window.addEventListener("theme-changed", handler);
+    return () => window.removeEventListener("theme-changed", handler);
+  }, []);
   
 
   // Read persisted sidebar settings
@@ -283,9 +291,11 @@ export default function AppSidebar() {
         </div>
         <button
           onClick={() => {
-            const next = !document.documentElement.classList.contains("dark");
+            const next = !isDark;
             document.documentElement.classList.toggle("dark", next);
             localStorage.setItem("theme", next ? "dark" : "light");
+            setIsDark(next);
+            window.dispatchEvent(new Event("theme-changed"));
 
             const presetId = localStorage.getItem("palette-preset");
             if (presetId) {
@@ -341,10 +351,8 @@ export default function AppSidebar() {
           }}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground transition-colors w-full"
         >
-          <Sun className="h-4 w-4 dark:hidden" />
-          <Moon className="h-4 w-4 hidden dark:block" />
-          <span className="dark:hidden">Modo Escuro</span>
-          <span className="hidden dark:inline">Modo Claro</span>
+          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {isDark ? "Modo Claro" : "Modo Escuro"}
         </button>
         <button
           onClick={logout}

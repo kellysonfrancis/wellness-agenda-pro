@@ -278,6 +278,13 @@ function clearCustomColor(el: HTMLElement) {
 export default function ThemeCustomizer() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
 
+  // Sync with external theme changes (e.g. from sidebar toggle)
+  useEffect(() => {
+    const handler = () => setDark(document.documentElement.classList.contains("dark"));
+    window.addEventListener("theme-changed", handler);
+    return () => window.removeEventListener("theme-changed", handler);
+  }, []);
+
   // Sidebar states
   const [sidebarTheme, setSidebarTheme] = useState(() => localStorage.getItem("sidebar-theme") || "default");
   const [customHsl, setCustomHsl] = useState(() => {
@@ -469,7 +476,7 @@ export default function ThemeCustomizer() {
             <p className="text-xs text-muted-foreground mt-0.5">Alterne entre tema claro e escuro</p>
           </div>
           <button
-            onClick={() => setDark(!dark)}
+            onClick={() => { setDark(!dark); setTimeout(() => window.dispatchEvent(new Event("theme-changed")), 0); }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted/50 transition-colors"
           >
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
