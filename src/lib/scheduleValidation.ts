@@ -5,50 +5,60 @@ interface Pausa {
   fim: number;
 }
 
-export interface CategorySchedule {
-  categoria: string;
-  dias_semana: number[];
+export interface ProfessionalSchedule {
+  professional_id: string;
+  dia_semana: number;
   hora_inicio: number;
   hora_fim: number;
   pausas: Pausa[];
+  ativo: boolean;
 }
 
-let cachedSchedules: CategorySchedule[] | null = null;
+let cachedSchedules: ProfessionalSchedule[] | null = null;
 
-export async function fetchCategorySchedules(): Promise<CategorySchedule[]> {
+export async function fetchProfessionalSchedules(): Promise<ProfessionalSchedule[]> {
   if (cachedSchedules) return cachedSchedules;
-  const { data } = await supabase.from("category_schedules").select("categoria, dias_semana, hora_inicio, hora_fim, pausas");
+  const { data } = await supabase
+    .from("professional_schedules")
+    .select("professional_id, dia_semana, hora_inicio, hora_fim, pausas, ativo");
   cachedSchedules = (data ?? []).map((row: any) => ({
     ...row,
     pausas: Array.isArray(row.pausas) ? row.pausas : [],
-  })) as CategorySchedule[];
+  })) as ProfessionalSchedule[];
   setTimeout(() => { cachedSchedules = null; }, 60_000);
   return cachedSchedules;
 }
 
 /**
- * Validates if a date/time falls within the allowed schedule for a given category.
+ * Validates if a date/time falls within the allowed schedule for a given professional.
  * Returns null if valid, or an error message string if invalid.
  */
 export function validateAgainstSchedule(
-  schedule: CategorySchedule | undefined,
+  schedules: ProfessionalSchedule[],
+  professionalId: string,
   date: Date,
 ): string | null {
-  if (!schedule) return null;
+  const profSchedules = schedules.filter(
+    (s) => s.professional_id === professionalId && s.ativo
+  );
+
+  // If no schedules configured, allow (backwards compat)
+  if (profSchedules.length === 0) return null;
 
   const dayOfWeek = date.getDay();
-  if (!schedule.dias_semana.includes(dayOfWeek)) {
+  const daySchedule = profSchedules.find((s) => s.dia_semana === dayOfWeek);
+
+  if (!daySchedule) {
     const dayNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-    return `${dayNames[dayOfWeek]} não é um dia permitido para esta categoria`;
+    return `${dayNames[dayOfWeek]} não é um dia de atendimento deste profissional`;
   }
 
   const hour = date.getHours() + date.getMinutes() / 60;
-  if (hour < schedule.hora_inicio || hour >= schedule.hora_fim) {
-    return `Horário fora da janela permitida (${schedule.hora_inicio}h - ${schedule.hora_fim}h)`;
+  if (hour < daySchedule.hora_inicio || hour >= daySchedule.hora_fim) {
+    return `Horário fora do expediente (${daySchedule.hora_inicio}h - ${daySchedule.hora_fim}h)`;
   }
 
-  // Check breaks
-  for (const pausa of schedule.pausas || []) {
+  for (const pausa of daySchedule.pausas || []) {
     if (hour >= pausa.inicio && hour < pausa.fim) {
       return `Horário de pausa (${pausa.inicio}h - ${pausa.fim}h)`;
     }
@@ -61,10 +71,9 @@ export function validateAgainstSchedule(
  * Convenience: fetch schedules + validate in one call.
  */
 export async function validateAppointmentSchedule(
-  categoria: string,
+  professionalId: string,
   date: Date,
 ): Promise<string | null> {
-  const schedules = await fetchCategorySchedules();
-  const schedule = schedules.find((s) => s.categoria === categoria);
-  return validateAgainstSchedule(schedule, date);
+  const schedules = await fetchProfessionalSchedules();
+  return validateAgainstSchedule(schedules, professionalId, date);
 }

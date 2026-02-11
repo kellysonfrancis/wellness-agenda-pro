@@ -86,16 +86,18 @@ serve(async (req: Request) => {
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
 
-    // GET: List active services and professionals
+    // GET: List active services and professionals (with service links)
     if (req.method === "GET" && action === "options") {
-      const [servicesRes, professionalsRes] = await Promise.all([
+      const [servicesRes, professionalsRes, profServicesRes] = await Promise.all([
         client.from("services").select("id, nome, categoria, duracao_min, preco_base, max_alunos").eq("ativo", true).order("nome"),
         client.from("professionals").select("id, nome_exibicao, especialidades").eq("ativo", true).order("nome_exibicao"),
+        client.from("professional_services").select("professional_id, service_id"),
       ]);
 
       return new Response(JSON.stringify({
         services: servicesRes.data ?? [],
         professionals: professionalsRes.data ?? [],
+        professional_services: profServicesRes.data ?? [],
       }), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
@@ -146,26 +148,33 @@ serve(async (req: Request) => {
         });
       }
 
-      const { data: schedules } = await client
-        .from("category_schedules")
-        .select("dias_semana, hora_inicio, hora_fim, pausas")
-        .eq("categoria", svc.categoria);
-
-      const schedule = schedules && schedules.length > 0 ? schedules[0] : null;
-      const pausas: Pausa[] = schedule?.pausas && Array.isArray(schedule.pausas) ? schedule.pausas as Pausa[] : [];
+      // Use professional schedules instead of category schedules
+      const { data: profSchedules } = await client
+        .from("professional_schedules")
+        .select("dia_semana, hora_inicio, hora_fim, pausas, ativo")
+        .eq("professional_id", profissionalId)
+        .eq("ativo", true);
 
       const dateObj = new Date(date + "T12:00:00");
       const dayOfWeek = dateObj.getDay();
-      if (schedule && !schedule.dias_semana.includes(dayOfWeek)) {
-        return new Response(JSON.stringify({ slots: [], duracao_min: svc.duracao_min, blocked: true, reason: "Dia não permitido para esta categoria" }), {
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        });
+
+      let schedStart = 8;
+      let schedEnd = 20;
+      let pausas: Pausa[] = [];
+
+      if (profSchedules && profSchedules.length > 0) {
+        const daySched = profSchedules.find((s: any) => s.dia_semana === dayOfWeek);
+        if (!daySched) {
+          return new Response(JSON.stringify({ slots: [], duracao_min: svc.duracao_min, blocked: true, reason: "Profissional não atende neste dia" }), {
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          });
+        }
+        schedStart = daySched.hora_inicio;
+        schedEnd = daySched.hora_fim;
+        pausas = daySched.pausas && Array.isArray(daySched.pausas) ? daySched.pausas as Pausa[] : [];
       }
 
-      const schedStart = schedule?.hora_inicio ?? 8;
-      const schedEnd = schedule?.hora_fim ?? 20;
       const maxAlunos = svc.max_alunos ?? 1;
-
       const dayStart = `${date}T00:00:00`;
       const dayEnd = `${date}T23:59:59`;
 
@@ -299,23 +308,29 @@ serve(async (req: Request) => {
         });
       }
 
-      const { data: schedules } = await client.from("category_schedules").select("dias_semana, hora_inicio, hora_fim, pausas").eq("categoria", svc.categoria);
-      if (schedules && schedules.length > 0) {
-        const schedule = schedules[0];
+      // Validate against professional schedule
+      const { data: profScheds } = await client
+        .from("professional_schedules")
+        .select("dia_semana, hora_inicio, hora_fim, pausas")
+        .eq("professional_id", profissional_id)
+        .eq("ativo", true);
+
+      if (profScheds && profScheds.length > 0) {
         const startDate = new Date(inicio_em);
         const dayOfWeek = startDate.getUTCDay();
         const hour = startDate.getUTCHours() + startDate.getUTCMinutes() / 60;
-        if (!schedule.dias_semana.includes(dayOfWeek)) {
-          return new Response(JSON.stringify({ error: "Dia da semana não permitido para esta categoria" }), {
+        const daySched = profScheds.find((s: any) => s.dia_semana === dayOfWeek);
+        if (!daySched) {
+          return new Response(JSON.stringify({ error: "Profissional não atende neste dia da semana" }), {
             status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
           });
         }
-        if (hour < schedule.hora_inicio || hour >= schedule.hora_fim) {
+        if (hour < daySched.hora_inicio || hour >= daySched.hora_fim) {
           return new Response(JSON.stringify({ error: "Horário fora da janela permitida" }), {
             status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
           });
         }
-        const pausas: Pausa[] = schedule.pausas && Array.isArray(schedule.pausas) ? schedule.pausas as Pausa[] : [];
+        const pausas: Pausa[] = daySched.pausas && Array.isArray(daySched.pausas) ? daySched.pausas as Pausa[] : [];
         for (const pausa of pausas) {
           if (hour >= pausa.inicio && hour < pausa.fim) {
             return new Response(JSON.stringify({ error: "Horário de pausa" }), {

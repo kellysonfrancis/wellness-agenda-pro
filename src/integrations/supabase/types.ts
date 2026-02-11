@@ -795,6 +795,86 @@ export type Database = {
         }
         Relationships: []
       }
+      professional_schedules: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          dia_semana: number
+          hora_fim: number
+          hora_inicio: number
+          id: string
+          pausas: Json
+          professional_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          dia_semana: number
+          hora_fim?: number
+          hora_inicio?: number
+          id?: string
+          pausas?: Json
+          professional_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          dia_semana?: number
+          hora_fim?: number
+          hora_inicio?: number
+          id?: string
+          pausas?: Json
+          professional_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_schedules_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_services: {
+        Row: {
+          created_at: string
+          id: string
+          professional_id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          professional_id: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          professional_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_services_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professionals: {
         Row: {
           ativo: boolean

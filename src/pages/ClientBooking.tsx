@@ -66,11 +66,31 @@ export default function ClientBooking() {
     },
   });
 
+  const { data: professionalServices = [] } = useQuery({
+    queryKey: ["booking-professional-services"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("professional_services")
+        .select("professional_id, service_id");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const selectedService = services.find((s) => s.id === serviceId);
   const selectedProf = professionals.find((p) => p.id === profId);
   const filteredServices = catFilter ? services.filter((s) => s.categoria === catFilter) : services;
   const filteredProfs = selectedService
-    ? professionals.filter((p) => (p.especialidades as string[]).includes(selectedService.categoria))
+    ? professionals.filter((p) => {
+        // Check if professional is linked to this service via professional_services
+        const hasServiceLink = professionalServices.some(
+          (ps) => ps.professional_id === p.id && ps.service_id === selectedService.id
+        );
+        // Fallback: if no links exist at all, use category match
+        const anyLinksExist = professionalServices.some((ps) => ps.service_id === selectedService.id);
+        if (!anyLinksExist) return (p.especialidades as string[]).includes(selectedService.categoria);
+        return hasServiceLink;
+      })
     : professionals;
 
   // Generate date options (next 14 days, exclude Sundays)
@@ -93,9 +113,9 @@ export default function ClientBooking() {
       const duracao = selectedService?.duracao_min || 50;
       const fim = addMinutes(inicio, duracao);
 
-      // Validate against category schedule
-      if (selectedService?.categoria) {
-        const scheduleError = await validateAppointmentSchedule(selectedService.categoria, inicio);
+      // Validate against professional schedule
+      if (profId) {
+        const scheduleError = await validateAppointmentSchedule(profId, inicio);
         if (scheduleError) throw new Error(scheduleError);
       }
 
