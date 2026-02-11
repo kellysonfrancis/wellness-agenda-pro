@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Loader2, Bot, User, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -163,13 +164,17 @@ export default function AssistenteIA() {
               </div>
             )}
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap ${
+              className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
                 m.role === "user"
-                  ? "bg-primary text-primary-foreground rounded-br-md"
-                  : "bg-muted text-foreground rounded-bl-md"
+                  ? "bg-primary text-primary-foreground rounded-br-md whitespace-pre-wrap"
+                  : "bg-muted text-foreground rounded-bl-md prose prose-sm prose-neutral dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
               }`}
             >
-              {m.content}
+              {m.role === "assistant" ? (
+                <ReactMarkdown>{m.content}</ReactMarkdown>
+              ) : (
+                m.content
+              )}
             </div>
             {m.role === "user" && (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
