@@ -60,6 +60,15 @@ export default function VendaRapida() {
     },
   });
 
+  const { data: plans = [] } = useQuery({
+    queryKey: ["product-plans-active"],
+    queryFn: async () => {
+      const { data } = await supabase.from("product_plans").select("id, nome, categoria, preco, tipo").eq("ativo", true).order("categoria, nome");
+      return data ?? [];
+    },
+    staleTime: 300_000,
+  });
+
   const { data: mySales = [] } = useQuery({
     queryKey: ["my-sales", user?.id],
     queryFn: async () => {
@@ -77,10 +86,12 @@ export default function VendaRapida() {
   const [sellerType, setSellerType] = useState<"profissional" | "recepcao">(defaultSellerType);
   const [clientId, setClientId] = useState("");
   const [categoria, setCategoria] = useState("pilates");
+  const [selectedPlanId, setSelectedPlanId] = useState("");
   const [valorVenda, setValorVenda] = useState("");
   const [showQuickClient, setShowQuickClient] = useState(false);
   const [clientOpen, setClientOpen] = useState(false);
   const [sellerOpen, setSellerOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
 
   // Set default seller on load
   useEffect(() => {
@@ -89,6 +100,8 @@ export default function VendaRapida() {
       setSellerType(defaultSellerType);
     }
   }, [defaultSellerId, defaultSellerType, sellerId]);
+
+  const filteredPlans = useMemo(() => plans.filter((p) => p.categoria === categoria), [plans, categoria]);
 
   const currentRate = rates.find((r) => r.categoria === categoria);
   const perc = currentRate ? Number(currentRate.percentual) : 0;
@@ -224,7 +237,7 @@ export default function VendaRapida() {
           {/* Category */}
           <div>
             <label className="text-sm font-medium mb-1.5 block">Categoria</label>
-            <Select value={categoria} onValueChange={setCategoria}>
+            <Select value={categoria} onValueChange={(v) => { setCategoria(v); setSelectedPlanId(""); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="pilates">Pilates</SelectItem>
@@ -232,6 +245,36 @@ export default function VendaRapida() {
                 <SelectItem value="estetica">Estética</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Plan/Package */}
+          <div>
+            <label className="text-sm font-medium mb-1.5 block">Pacote / Plano</label>
+            <Popover open={planOpen} onOpenChange={setPlanOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={planOpen} className="w-full justify-between font-normal">
+                  {selectedPlanId ? filteredPlans.find((p) => p.id === selectedPlanId)?.nome : "Selecione o plano"}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar plano..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum plano nesta categoria.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredPlans.map((p) => (
+                        <CommandItem key={p.id} value={p.nome} onSelect={() => { setSelectedPlanId(p.id); setValorVenda(String(p.preco)); setPlanOpen(false); }}>
+                          <Check className={cn("mr-2 h-4 w-4", selectedPlanId === p.id ? "opacity-100" : "opacity-0")} />
+                          {p.nome}
+                          <span className="text-muted-foreground text-xs ml-auto">R$ {Number(p.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Value */}
