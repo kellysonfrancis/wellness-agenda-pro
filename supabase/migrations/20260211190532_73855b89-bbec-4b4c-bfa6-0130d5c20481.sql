@@ -1,0 +1,1 @@
+ALTER TABLE public.categories ADD COLUMN max_alunos integer DEFAULT NULL;

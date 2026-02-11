@@ -238,13 +238,13 @@ export default function Servicos() {
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
-      ) : services.length === 0 ? (
+      ) : services.filter(s => s.categoria !== "pilates").length === 0 ? (
         <div className="bg-card rounded-xl border border-border shadow-sm p-8 text-center">
-          <p className="text-muted-foreground text-sm">Nenhum serviço cadastrado.</p>
+          <p className="text-muted-foreground text-sm">Nenhum serviço cadastrado. Pilates é gerenciado na página de Pacotes.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {services.map((s) => (
+          {services.filter(s => s.categoria !== "pilates").map((s) => (
             <div key={s.id} className="bg-card rounded-xl border border-border shadow-sm p-5 hover:shadow-md transition-shadow group">
               <div className="flex items-start justify-between mb-3">
                 <div>
@@ -377,12 +377,10 @@ export default function Servicos() {
                     value={form.max_alunos}
                     onChange={(e) => setForm({ ...form, max_alunos: e.target.value === "" ? "" : Number(e.target.value) })}
                     className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-                    placeholder={form.categoria === "pilates" ? "Ex: 5" : "1"}
+                    placeholder="1"
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    {form.categoria === "pilates"
-                      ? "🧘 Pilates: defina a capacidade da turma (ex: 5 alunos). Duo = 2, Trio = 3, Grupo = até 5."
-                      : form.categoria === "fisioterapia"
+                    {form.categoria === "fisioterapia"
                       ? "🩺 Fisioterapia: geralmente 1 paciente por horário por profissional."
                       : form.categoria === "estetica"
                       ? "✨ Estética: geralmente 1 paciente por horário por profissional."
