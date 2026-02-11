@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Calendar, Users, DollarSign, Sparkles,
   Package, Settings, CalendarPlus, CalendarCheck, ShoppingBag,
   LogOut, Menu, X, BarChart3, Receipt, UserCog, Tags, Stethoscope, HandCoins, ShoppingCart, AlertTriangle, Activity, UserX, TrendingUp, ClipboardList, ListOrdered,
-  Moon, Sun, MessageSquare, ChevronDown, FolderOpen, FileText
+  MessageSquare, ChevronDown, FolderOpen, FileText
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
@@ -106,7 +106,7 @@ export default function AppSidebar() {
   const { profile, roles, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const { badges, changedPaths } = useSidebarBadges();
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  
 
   // Read persisted sidebar settings
   const sidebarTheme = localStorage.getItem("sidebar-theme") || "default";
@@ -114,9 +114,6 @@ export default function AppSidebar() {
   const glassMode = localStorage.getItem("sidebar-glass") === "true";
   const blurLevel = localStorage.getItem("sidebar-blur") || "forte";
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
-  }, [dark]);
 
   // Apply sidebar theme from persisted settings
   useEffect(() => {
@@ -168,7 +165,7 @@ export default function AppSidebar() {
         } catch {}
       }
     });
-  }, [dark]);
+  }, []);
 
   if (!profile) return null;
 
@@ -283,13 +280,6 @@ export default function AppSidebar() {
           <p className="text-sm font-medium text-sidebar-foreground">{profile.nome || profile.email}</p>
           <p className="text-xs text-sidebar-foreground/60 capitalize">{roles.join(", ") || "sem papel"}</p>
         </div>
-        <button
-          onClick={() => setDark(!dark)}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground transition-colors w-full"
-        >
-          {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          {dark ? "Modo Claro" : "Modo Escuro"}
-        </button>
         <button
           onClick={logout}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground transition-colors w-full"
