@@ -357,12 +357,13 @@ export default function VendaRapida() {
               <TableHead className="text-right">Valor</TableHead>
               <TableHead className="text-right">Comissão</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {mySales.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   Nenhuma venda registrada ainda
                 </TableCell>
               </TableRow>
@@ -383,6 +384,27 @@ export default function VendaRapida() {
                       <Badge className="bg-success/10 text-success border-success/20"><Check className="h-3 w-3 mr-1" />Pago</Badge>
                     ) : (
                       <Badge variant="outline" className="text-amber-600 border-amber-300">Pendente</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {!s.pago && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs"
+                        onClick={async () => {
+                          const { error } = await supabase.from("sales").update({ pago: true, pago_em: new Date().toISOString() } as any).eq("id", s.id);
+                          if (error) {
+                            toast({ title: "Erro", description: error.message, variant: "destructive" });
+                          } else {
+                            toast({ title: "✅ Venda marcada como paga!" });
+                            qc.invalidateQueries({ queryKey: ["my-sales"] });
+                            qc.invalidateQueries({ queryKey: ["sales"] });
+                          }
+                        }}
+                      >
+                        <Check className="h-3 w-3 mr-1" /> Dar Baixa
+                      </Button>
                     )}
                   </TableCell>
                 </TableRow>
