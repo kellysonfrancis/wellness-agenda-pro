@@ -129,6 +129,18 @@ export default function VendaRapida() {
     mutationFn: async () => {
       const valor = Number(valorVenda);
       const comissao = (valor * perc) / 100;
+
+      // 1. Create payment record (pending)
+      const { data: paymentData, error: paymentError } = await supabase.from("payments").insert({
+        client_id: clientId,
+        valor_total: valor,
+        valor_pago: 0,
+        status: "pendente" as any,
+        metodo: "pix" as any,
+      }).select("id").single();
+      if (paymentError) throw paymentError;
+
+      // 2. Create sale record linked to payment
       const { error } = await supabase.from("sales").insert({
         seller_id: sellerId,
         seller_type: sellerType,
@@ -137,12 +149,14 @@ export default function VendaRapida() {
         valor_venda: valor,
         percentual_comissao: perc,
         valor_comissao: comissao,
+        payment_id: paymentData.id,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-sales"] });
       qc.invalidateQueries({ queryKey: ["sales"] });
+      qc.invalidateQueries({ queryKey: ["payments"] });
       setClientId("");
       setValorVenda("");
       toast({ title: "✅ Venda registrada!", description: `Comissão: R$ ${comissaoPreview.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` });
