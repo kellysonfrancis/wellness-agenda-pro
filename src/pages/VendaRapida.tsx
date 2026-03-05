@@ -97,6 +97,7 @@ export default function VendaRapida() {
   const [categoria, setCategoria] = useState("pilates");
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [valorVenda, setValorVenda] = useState("");
+  const [metodo, setMetodo] = useState<"pix" | "cartao" | "dinheiro" | "transferencia" | "outro">("pix");
   const [showQuickClient, setShowQuickClient] = useState(false);
   const [clientOpen, setClientOpen] = useState(false);
   const [sellerOpen, setSellerOpen] = useState(false);
@@ -136,7 +137,7 @@ export default function VendaRapida() {
         valor_total: valor,
         valor_pago: 0,
         status: "pendente" as any,
-        metodo: "pix" as any,
+        metodo: metodo as any,
       }).select("id").single();
       if (paymentError) throw paymentError;
 
@@ -331,6 +332,21 @@ export default function VendaRapida() {
               onChange={(e) => setValorVenda(e.target.value)}
               placeholder="0,00"
             />
+          </div>
+
+          {/* Payment method */}
+          <div>
+            <label className="text-sm font-medium mb-1.5 block">Método de Pagamento</label>
+            <Select value={metodo} onValueChange={(v) => setMetodo(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pix">PIX</SelectItem>
+                <SelectItem value="cartao">Cartão</SelectItem>
+                <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                <SelectItem value="transferencia">Transferência</SelectItem>
+                <SelectItem value="outro">Outro</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Commission preview */}
