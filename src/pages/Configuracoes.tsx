@@ -1,5 +1,5 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe, Clock, Palette } from "lucide-react";
+import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe, Clock, Palette, QrCode, LogOut } from "lucide-react";
 import LandingConfigEditor from "@/components/landing/LandingConfigEditor";
 import TestimonialsEditor from "@/components/landing/TestimonialsEditor";
 import CategorySchedulesEditor from "@/components/agenda/CategorySchedulesEditor";
@@ -15,8 +15,14 @@ interface WaLine {
   id: string;
   label: string;
   categorias: string[];
+  provider: "meta" | "evolution";
   token: string;
   phoneId: string;
+  evolutionUrl: string;
+  evolutionInstance: string;
+  evolutionApiKey: string;
+  evolutionStatus?: "disconnected" | "qr" | "connected";
+  evolutionPhone?: string | null;
   reminderEnabled: boolean;
   confirmEnabled: boolean;
   receiptEnabled: boolean;
@@ -30,6 +36,9 @@ interface WaLine {
   testStatus?: "idle" | "sending" | "sent" | "error";
   testMsg?: string;
   testPhone?: string;
+  // QR modal
+  qrcode?: string | null;
+  qrLoading?: boolean;
 }
 
 const CATEGORIAS = [
@@ -42,8 +51,13 @@ const newLine = (): WaLine => ({
   id: crypto.randomUUID(),
   label: "",
   categorias: [],
+  provider: "meta",
   token: "",
   phoneId: "",
+  evolutionUrl: "",
+  evolutionInstance: "",
+  evolutionApiKey: "",
+  evolutionStatus: "disconnected",
   reminderEnabled: true,
   confirmEnabled: true,
   receiptEnabled: true,
