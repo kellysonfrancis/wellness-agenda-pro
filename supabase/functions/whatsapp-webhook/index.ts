@@ -19,7 +19,8 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const db = createClient(supabaseUrl, serviceRoleKey);
-  const verifyToken = Deno.env.get("WHATSAPP_WEBHOOK_VERIFY_TOKEN") || "lovable_verify_token";
+  const verifyToken = Deno.env.get("WHATSAPP_WEBHOOK_VERIFY_TOKEN");
+  const appSecret = Deno.env.get("WHATSAPP_APP_SECRET");
 
   // GET = Meta webhook verification
   if (req.method === "GET") {
@@ -28,6 +29,9 @@ serve(async (req) => {
     const token = url.searchParams.get("hub.verify_token");
     const challenge = url.searchParams.get("hub.challenge");
 
+    if (!verifyToken) {
+      return new Response("Forbidden", { status: 403 });
+    }
     if (mode === "subscribe" && token === verifyToken) {
       return new Response(challenge, { status: 200 });
     }
@@ -40,7 +44,22 @@ serve(async (req) => {
 
   // POST = incoming message
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+
+    // Validate Meta HMAC signature
+    if (!appSecret) {
+      return new Response(JSON.stringify({ error: "Server misconfigured" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const sigHeader = req.headers.get("x-hub-signature-256") || "";
+    const expectedHex = await hmacSha256Hex(appSecret, rawBody);
+    const expected = `sha256=${expectedHex}`;
+    if (!timingSafeEqual(sigHeader, expected)) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    const body = JSON.parse(rawBody);
 
     const entries = body?.entry || [];
     for (const entry of entries) {
