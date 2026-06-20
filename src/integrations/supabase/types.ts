@@ -1187,37 +1187,55 @@ export type Database = {
       }
       whatsapp_lines: {
         Row: {
-          access_token: string
+          access_token: string | null
           categorias: string[]
           confirm_enabled: boolean
           created_at: string
+          evolution_api_key: string | null
+          evolution_instance: string | null
+          evolution_phone: string | null
+          evolution_status: string | null
+          evolution_url: string | null
           id: string
           label: string
-          phone_number_id: string
+          phone_number_id: string | null
+          provider: string
           receipt_enabled: boolean
           reminder_enabled: boolean
           updated_at: string
         }
         Insert: {
-          access_token: string
+          access_token?: string | null
           categorias?: string[]
           confirm_enabled?: boolean
           created_at?: string
+          evolution_api_key?: string | null
+          evolution_instance?: string | null
+          evolution_phone?: string | null
+          evolution_status?: string | null
+          evolution_url?: string | null
           id?: string
           label: string
-          phone_number_id: string
+          phone_number_id?: string | null
+          provider?: string
           receipt_enabled?: boolean
           reminder_enabled?: boolean
           updated_at?: string
         }
         Update: {
-          access_token?: string
+          access_token?: string | null
           categorias?: string[]
           confirm_enabled?: boolean
           created_at?: string
+          evolution_api_key?: string | null
+          evolution_instance?: string | null
+          evolution_phone?: string | null
+          evolution_status?: string | null
+          evolution_url?: string | null
           id?: string
           label?: string
-          phone_number_id?: string
+          phone_number_id?: string | null
+          provider?: string
           receipt_enabled?: boolean
           reminder_enabled?: boolean
           updated_at?: string
