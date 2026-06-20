@@ -81,7 +81,7 @@ export default function Configuracoes() {
   const fetchLines = useCallback(async () => {
     const { data, error } = await supabase
       .from("whatsapp_lines")
-      .select("id, label, categorias, reminder_enabled, confirm_enabled, receipt_enabled")
+      .select("id, label, categorias, reminder_enabled, confirm_enabled, receipt_enabled, provider, evolution_url, evolution_instance, evolution_api_key, evolution_status, evolution_phone")
       .order("created_at");
 
     if (!error && data) {
@@ -89,8 +89,14 @@ export default function Configuracoes() {
         id: row.id,
         label: row.label,
         categorias: row.categorias || [],
+        provider: (row.provider as "meta" | "evolution") || "meta",
         token: "",
         phoneId: "",
+        evolutionUrl: row.evolution_url || "",
+        evolutionInstance: row.evolution_instance || "",
+        evolutionApiKey: "",
+        evolutionStatus: (row.evolution_status as any) || "disconnected",
+        evolutionPhone: row.evolution_phone || null,
         reminderEnabled: row.reminder_enabled,
         confirmEnabled: row.confirm_enabled,
         receiptEnabled: row.receipt_enabled,
