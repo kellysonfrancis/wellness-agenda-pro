@@ -91,44 +91,58 @@ serve(async (req) => {
       });
     }
 
-    // Build the message based on type
-    const messagePayload = buildMessage(tipo, destinatario, dados);
+    let messageId: string | null = null;
+    let errorPayload: any = null;
+    let ok = false;
 
-    // Send via Meta Cloud API
-    const metaResponse = await fetch(`${META_API}/${line.phone_number_id}/messages`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${line.access_token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(messagePayload),
-    });
-
-    const metaData = await metaResponse.json();
-
-    if (!metaResponse.ok) {
-      console.error("Meta API error:", JSON.stringify(metaData));
-
-      // Log the error
-      await adminClient.from("whatsapp_log").insert({
-        line_id: line.id,
-        tipo,
-        destinatario,
-        appointment_id: appointment_id || null,
-        status: "erro",
-        erro: JSON.stringify(metaData.error || metaData),
+    if ((line.provider || "meta") === "evolution") {
+      // ── Evolution API ──
+      const evoUrl = (line.evolution_url || "").replace(/\/+$/, "");
+      const evoInstance = line.evolution_instance;
+      const evoKey = line.evolution_api_key;
+      if (!evoUrl || !evoInstance || !evoKey) {
+        errorPayload = { message: "Linha Evolution sem URL/instância/API key" };
+      } else {
+        const number = destinatario.replace(/\D/g, "");
+        const text = buildText(tipo, dados);
+        const r = await fetch(`${evoUrl}/message/sendText/${evoInstance}`, {
+          method: "POST",
+          headers: { apikey: evoKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ number, text }),
+        });
+        const d = await r.json().catch(() => ({}));
+        ok = r.ok;
+        if (ok) messageId = d?.key?.id || null;
+        else errorPayload = d?.message || d?.error || `HTTP ${r.status}`;
+      }
+    } else {
+      // ── Meta Cloud API ──
+      const messagePayload = buildMessage(tipo, destinatario, dados);
+      const metaResponse = await fetch(`${META_API}/${line.phone_number_id}/messages`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${line.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(messagePayload),
       });
-
-      return new Response(JSON.stringify({
-        error: "Falha ao enviar mensagem WhatsApp",
-        details: metaData.error?.message || "Erro desconhecido da Meta API",
-      }), {
-        status: 502,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const metaData = await metaResponse.json();
+      ok = metaResponse.ok;
+      if (ok) messageId = metaData.messages?.[0]?.id || null;
+      else errorPayload = metaData.error || metaData;
     }
 
-    const metaMessageId = metaData.messages?.[0]?.id || null;
+    if (!ok) {
+      console.error("WhatsApp send error:", JSON.stringify(errorPayload));
+      await adminClient.from("whatsapp_log").insert({
+        line_id: line.id, tipo, destinatario,
+        appointment_id: appointment_id || null,
+        status: "erro", erro: JSON.stringify(errorPayload),
+      });
+      return new Response(JSON.stringify({
+        error: "Falha ao enviar mensagem WhatsApp",
+        details: typeof errorPayload === "string" ? errorPayload : (errorPayload?.message || "Erro desconhecido"),
+      }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const metaMessageId = messageId;
 
     // Log success
     await adminClient.from("whatsapp_log").insert({
@@ -156,6 +170,19 @@ serve(async (req) => {
     });
   }
 });
+
+function buildText(tipo: string, dados: any): string {
+  switch (tipo) {
+    case "lembrete":
+      return `Olá${dados?.cliente_nome ? `, ${dados.cliente_nome}` : ""}! 🕐\n\nLembrete do seu agendamento:\n📅 ${dados?.data || "Data não informada"}\n⏰ ${dados?.horario || "Horário não informado"}\n💆 ${dados?.servico || "Serviço"}\n👩‍⚕️ ${dados?.profissional || ""}\n\nEm caso de dúvidas, entre em contato conosco.`;
+    case "confirmacao":
+      return `Olá${dados?.cliente_nome ? `, ${dados.cliente_nome}` : ""}! ✅\n\nPor favor, confirme sua presença:\n📅 ${dados?.data || "Data não informada"}\n⏰ ${dados?.horario || "Horário não informado"}\n💆 ${dados?.servico || "Serviço"}\n\nResponda *SIM* para confirmar ou *NÃO* para cancelar.`;
+    case "recibo":
+      return `Olá${dados?.cliente_nome ? `, ${dados.cliente_nome}` : ""}! 🧾\n\nRecibo de pagamento:\n💰 Valor: R$ ${dados?.valor || "0,00"}\n💳 Método: ${dados?.metodo || "Não informado"}\n📅 Data: ${dados?.data || "Não informada"}\n📝 Ref: ${dados?.referencia || ""}\n\nObrigado pela preferência! 😊`;
+    default:
+      return dados?.mensagem || "Mensagem da clínica.";
+  }
+}
 
 function buildMessage(tipo: string, destinatario: string, dados: any) {
   const phone = destinatario.replace(/\D/g, "");
