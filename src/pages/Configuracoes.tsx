@@ -188,10 +188,6 @@ export default function Configuracoes() {
   };
 
   const handleSave = async (line: WaLine) => {
-    if (!line.token.trim() || !line.phoneId.trim()) {
-      toast.error("Preencha o Token e o Phone Number ID");
-      return;
-    }
     if (!line.label.trim()) {
       toast.error("Dê um nome para esta linha");
       return;
@@ -200,22 +196,34 @@ export default function Configuracoes() {
       toast.error("Selecione pelo menos uma categoria");
       return;
     }
+    if (line.provider === "meta" && (!line.token.trim() || !line.phoneId.trim())) {
+      toast.error("Preencha o Token e o Phone Number ID");
+      return;
+    }
+    if (line.provider === "evolution" && (!line.evolutionUrl.trim() || !line.evolutionInstance.trim() || !line.evolutionApiKey.trim())) {
+      toast.error("Preencha URL, instância e API key da Evolution");
+      return;
+    }
     setSavingId(line.id);
     try {
       const { error } = await supabase.functions.invoke("save-whatsapp-config", {
         body: {
           line_id: line.id,
           label: line.label,
+          provider: line.provider,
           categorias: line.categorias,
           access_token: line.token,
           phone_number_id: line.phoneId,
+          evolution_url: line.evolutionUrl,
+          evolution_instance: line.evolutionInstance,
+          evolution_api_key: line.evolutionApiKey,
           reminder_enabled: line.reminderEnabled,
           confirm_enabled: line.confirmEnabled,
           receipt_enabled: line.receiptEnabled,
         },
       });
       if (error) throw error;
-      updateLine(line.id, { configured: true, token: "", phoneId: "", isNew: false, validationStatus: "idle", testStatus: "idle" });
+      updateLine(line.id, { configured: true, token: "", phoneId: "", evolutionApiKey: "", isNew: false, validationStatus: "idle", testStatus: "idle" });
       toast.success(`Linha "${line.label}" salva com sucesso!`);
     } catch (err: any) {
       toast.error("Erro ao salvar: " + (err.message || "tente novamente"));
@@ -223,6 +231,75 @@ export default function Configuracoes() {
       setSavingId(null);
     }
   };
+
+  // ── Evolution actions ──
+  const handleEvoConnect = async (line: WaLine) => {
+    if (!line.evolutionUrl.trim() || !line.evolutionInstance.trim() || !line.evolutionApiKey.trim()) {
+      toast.error("Preencha URL, instância e API key");
+      return;
+    }
+    updateLine(line.id, { qrLoading: true, qrcode: null });
+    try {
+      const { data, error } = await supabase.functions.invoke("evolution-manage", {
+        body: {
+          action: "create_instance",
+          url: line.evolutionUrl,
+          api_key: line.evolutionApiKey,
+          instance: line.evolutionInstance,
+        },
+      });
+      if (error) throw error;
+      updateLine(line.id, { qrcode: data?.qrcode || null, qrLoading: false, evolutionStatus: "qr" });
+      if (!data?.qrcode) toast.message("Instância criada. Abra novamente para gerar o QR code.");
+    } catch (err: any) {
+      updateLine(line.id, { qrLoading: false });
+      toast.error("Erro ao gerar QR: " + (err.message || ""));
+    }
+  };
+
+  const handleEvoStatus = async (line: WaLine) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("evolution-manage", {
+        body: { action: "status", line_id: line.id },
+      });
+      if (error) throw error;
+      updateLine(line.id, { evolutionStatus: data?.status, evolutionPhone: data?.phone, qrcode: data?.status === "connected" ? null : line.qrcode });
+      toast.success(`Status: ${data?.status}`);
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || ""));
+    }
+  };
+
+  const handleEvoLogout = async (line: WaLine) => {
+    if (!confirm("Desconectar este número do WhatsApp?")) return;
+    try {
+      await supabase.functions.invoke("evolution-manage", { body: { action: "logout", line_id: line.id } });
+      updateLine(line.id, { evolutionStatus: "disconnected", evolutionPhone: null, qrcode: null });
+      toast.success("Desconectado");
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || ""));
+    }
+  };
+
+  // Poll status while waiting for QR pairing
+  useEffect(() => {
+    const waiting = lines.filter(l => l.provider === "evolution" && l.qrcode && l.evolutionStatus !== "connected" && !l.isNew);
+    if (waiting.length === 0) return;
+    const t = setInterval(async () => {
+      for (const l of waiting) {
+        try {
+          const { data } = await supabase.functions.invoke("evolution-manage", {
+            body: { action: "status", line_id: l.id },
+          });
+          if (data?.status === "connected") {
+            updateLine(l.id, { evolutionStatus: "connected", evolutionPhone: data?.phone, qrcode: null });
+            toast.success(`WhatsApp conectado: ${data?.phone || ""}`);
+          }
+        } catch {}
+      }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [lines]);
 
   const inputClass = "mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30";
 
