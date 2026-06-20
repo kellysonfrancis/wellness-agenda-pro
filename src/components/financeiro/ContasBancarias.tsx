@@ -113,38 +113,23 @@ export default function ContasBancarias() {
     if (!transfer.origemId || !transfer.destinoId) { toast({ title: "Selecione origem e destino", variant: "destructive" }); return; }
     if (transfer.origemId === transfer.destinoId) { toast({ title: "Origem e destino devem ser diferentes", variant: "destructive" }); return; }
     if (transfer.valor <= 0) { toast({ title: "Valor deve ser maior que zero", variant: "destructive" }); return; }
-    const origem = accounts.find(a => a.id === transfer.origemId);
-    if (origem && transfer.valor > Number(origem.saldo_atual)) { toast({ title: "Saldo insuficiente", variant: "destructive" }); return; }
 
     setSaving(true);
-    // Update balances
-    const [r1, r2] = await Promise.all([
-      supabase.rpc("" as any).then(() => null), // placeholder - do manual updates
-    ]).catch(() => [null, null]);
-
-    // Update origin
-    await supabase.from("bank_accounts").update({
-      saldo_atual: Number(origem!.saldo_atual) - transfer.valor,
-    } as any).eq("id", transfer.origemId);
-
-    const destino = accounts.find(a => a.id === transfer.destinoId);
-    await supabase.from("bank_accounts").update({
-      saldo_atual: Number(destino!.saldo_atual) + transfer.valor,
-    } as any).eq("id", transfer.destinoId);
-
-    // Create transaction
-    await supabase.from("account_transactions").insert({
-      conta_origem_id: transfer.origemId,
-      conta_destino_id: transfer.destinoId,
-      tipo: "transferencia",
-      valor: transfer.valor,
-      descricao: transfer.descricao || `Transferência ${getAccountName(transfer.origemId)} → ${getAccountName(transfer.destinoId)}`,
-    } as any);
-
-    toast({ title: "Transferência realizada!" });
-    setTransfer({ origemId: "", destinoId: "", valor: 0, descricao: "" });
-    setTransferOpen(false);
-    fetchAll();
+    const descricao = transfer.descricao || `Transferência ${getAccountName(transfer.origemId)} → ${getAccountName(transfer.destinoId)}`;
+    const { error } = await supabase.rpc("transfer_funds" as any, {
+      p_origem: transfer.origemId,
+      p_destino: transfer.destinoId,
+      p_valor: transfer.valor,
+      p_descricao: descricao,
+    });
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Transferência realizada!" });
+      setTransfer({ origemId: "", destinoId: "", valor: 0, descricao: "" });
+      setTransferOpen(false);
+      fetchAll();
+    }
     setSaving(false);
   };
 

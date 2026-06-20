@@ -328,6 +328,7 @@ export type Database = {
           observacoes: string | null
           telefone: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -338,6 +339,7 @@ export type Database = {
           observacoes?: string | null
           telefone: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -348,6 +350,7 @@ export type Database = {
           observacoes?: string | null
           telefone?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1290,6 +1293,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      transfer_funds: {
+        Args: {
+          p_descricao: string
+          p_destino: string
+          p_origem: string
+          p_valor: number
+        }
+        Returns: string
       }
     }
     Enums: {

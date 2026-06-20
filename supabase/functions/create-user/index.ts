@@ -97,16 +97,18 @@ serve(async (req: Request) => {
       });
     }
 
-    // Assign role
-    const { error: roleError } = await serviceClient
-      .from("user_roles")
-      .insert({ user_id: newUser.user.id, role });
+    // Assign role (skip for 'cliente' since handle_new_user trigger already inserts it)
+    if (role !== "cliente") {
+      const { error: roleError } = await serviceClient
+        .from("user_roles")
+        .upsert({ user_id: newUser.user.id, role }, { onConflict: "user_id,role", ignoreDuplicates: true });
 
-    if (roleError) {
-      return new Response(JSON.stringify({ error: `Usuário criado mas erro ao atribuir papel: ${roleError.message}` }), {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+      if (roleError) {
+        return new Response(JSON.stringify({ error: `Usuário criado mas erro ao atribuir papel: ${roleError.message}` }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
     }
 
     return new Response(
