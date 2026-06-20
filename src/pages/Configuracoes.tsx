@@ -1,5 +1,5 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe, Clock, Palette } from "lucide-react";
+import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe, Clock, Palette, QrCode, LogOut } from "lucide-react";
 import LandingConfigEditor from "@/components/landing/LandingConfigEditor";
 import TestimonialsEditor from "@/components/landing/TestimonialsEditor";
 import CategorySchedulesEditor from "@/components/agenda/CategorySchedulesEditor";
@@ -15,8 +15,14 @@ interface WaLine {
   id: string;
   label: string;
   categorias: string[];
+  provider: "meta" | "evolution";
   token: string;
   phoneId: string;
+  evolutionUrl: string;
+  evolutionInstance: string;
+  evolutionApiKey: string;
+  evolutionStatus?: "disconnected" | "qr" | "connected";
+  evolutionPhone?: string | null;
   reminderEnabled: boolean;
   confirmEnabled: boolean;
   receiptEnabled: boolean;
@@ -30,6 +36,9 @@ interface WaLine {
   testStatus?: "idle" | "sending" | "sent" | "error";
   testMsg?: string;
   testPhone?: string;
+  // QR modal
+  qrcode?: string | null;
+  qrLoading?: boolean;
 }
 
 const CATEGORIAS = [
@@ -42,8 +51,13 @@ const newLine = (): WaLine => ({
   id: crypto.randomUUID(),
   label: "",
   categorias: [],
+  provider: "meta",
   token: "",
   phoneId: "",
+  evolutionUrl: "",
+  evolutionInstance: "",
+  evolutionApiKey: "",
+  evolutionStatus: "disconnected",
   reminderEnabled: true,
   confirmEnabled: true,
   receiptEnabled: true,
@@ -67,7 +81,7 @@ export default function Configuracoes() {
   const fetchLines = useCallback(async () => {
     const { data, error } = await supabase
       .from("whatsapp_lines")
-      .select("id, label, categorias, reminder_enabled, confirm_enabled, receipt_enabled")
+      .select("id, label, categorias, reminder_enabled, confirm_enabled, receipt_enabled, provider, evolution_url, evolution_instance, evolution_api_key, evolution_status, evolution_phone")
       .order("created_at");
 
     if (!error && data) {
@@ -75,8 +89,14 @@ export default function Configuracoes() {
         id: row.id,
         label: row.label,
         categorias: row.categorias || [],
+        provider: (row.provider as "meta" | "evolution") || "meta",
         token: "",
         phoneId: "",
+        evolutionUrl: row.evolution_url || "",
+        evolutionInstance: row.evolution_instance || "",
+        evolutionApiKey: "",
+        evolutionStatus: (row.evolution_status as any) || "disconnected",
+        evolutionPhone: row.evolution_phone || null,
         reminderEnabled: row.reminder_enabled,
         confirmEnabled: row.confirm_enabled,
         receiptEnabled: row.receipt_enabled,
@@ -168,10 +188,6 @@ export default function Configuracoes() {
   };
 
   const handleSave = async (line: WaLine) => {
-    if (!line.token.trim() || !line.phoneId.trim()) {
-      toast.error("Preencha o Token e o Phone Number ID");
-      return;
-    }
     if (!line.label.trim()) {
       toast.error("Dê um nome para esta linha");
       return;
@@ -180,22 +196,34 @@ export default function Configuracoes() {
       toast.error("Selecione pelo menos uma categoria");
       return;
     }
+    if (line.provider === "meta" && (!line.token.trim() || !line.phoneId.trim())) {
+      toast.error("Preencha o Token e o Phone Number ID");
+      return;
+    }
+    if (line.provider === "evolution" && (!line.evolutionUrl.trim() || !line.evolutionInstance.trim() || !line.evolutionApiKey.trim())) {
+      toast.error("Preencha URL, instância e API key da Evolution");
+      return;
+    }
     setSavingId(line.id);
     try {
       const { error } = await supabase.functions.invoke("save-whatsapp-config", {
         body: {
           line_id: line.id,
           label: line.label,
+          provider: line.provider,
           categorias: line.categorias,
           access_token: line.token,
           phone_number_id: line.phoneId,
+          evolution_url: line.evolutionUrl,
+          evolution_instance: line.evolutionInstance,
+          evolution_api_key: line.evolutionApiKey,
           reminder_enabled: line.reminderEnabled,
           confirm_enabled: line.confirmEnabled,
           receipt_enabled: line.receiptEnabled,
         },
       });
       if (error) throw error;
-      updateLine(line.id, { configured: true, token: "", phoneId: "", isNew: false, validationStatus: "idle", testStatus: "idle" });
+      updateLine(line.id, { configured: true, token: "", phoneId: "", evolutionApiKey: "", isNew: false, validationStatus: "idle", testStatus: "idle" });
       toast.success(`Linha "${line.label}" salva com sucesso!`);
     } catch (err: any) {
       toast.error("Erro ao salvar: " + (err.message || "tente novamente"));
@@ -203,6 +231,75 @@ export default function Configuracoes() {
       setSavingId(null);
     }
   };
+
+  // ── Evolution actions ──
+  const handleEvoConnect = async (line: WaLine) => {
+    if (!line.evolutionUrl.trim() || !line.evolutionInstance.trim() || !line.evolutionApiKey.trim()) {
+      toast.error("Preencha URL, instância e API key");
+      return;
+    }
+    updateLine(line.id, { qrLoading: true, qrcode: null });
+    try {
+      const { data, error } = await supabase.functions.invoke("evolution-manage", {
+        body: {
+          action: "create_instance",
+          url: line.evolutionUrl,
+          api_key: line.evolutionApiKey,
+          instance: line.evolutionInstance,
+        },
+      });
+      if (error) throw error;
+      updateLine(line.id, { qrcode: data?.qrcode || null, qrLoading: false, evolutionStatus: "qr" });
+      if (!data?.qrcode) toast.message("Instância criada. Abra novamente para gerar o QR code.");
+    } catch (err: any) {
+      updateLine(line.id, { qrLoading: false });
+      toast.error("Erro ao gerar QR: " + (err.message || ""));
+    }
+  };
+
+  const handleEvoStatus = async (line: WaLine) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("evolution-manage", {
+        body: { action: "status", line_id: line.id },
+      });
+      if (error) throw error;
+      updateLine(line.id, { evolutionStatus: data?.status, evolutionPhone: data?.phone, qrcode: data?.status === "connected" ? null : line.qrcode });
+      toast.success(`Status: ${data?.status}`);
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || ""));
+    }
+  };
+
+  const handleEvoLogout = async (line: WaLine) => {
+    if (!confirm("Desconectar este número do WhatsApp?")) return;
+    try {
+      await supabase.functions.invoke("evolution-manage", { body: { action: "logout", line_id: line.id } });
+      updateLine(line.id, { evolutionStatus: "disconnected", evolutionPhone: null, qrcode: null });
+      toast.success("Desconectado");
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || ""));
+    }
+  };
+
+  // Poll status while waiting for QR pairing
+  useEffect(() => {
+    const waiting = lines.filter(l => l.provider === "evolution" && l.qrcode && l.evolutionStatus !== "connected" && !l.isNew);
+    if (waiting.length === 0) return;
+    const t = setInterval(async () => {
+      for (const l of waiting) {
+        try {
+          const { data } = await supabase.functions.invoke("evolution-manage", {
+            body: { action: "status", line_id: l.id },
+          });
+          if (data?.status === "connected") {
+            updateLine(l.id, { evolutionStatus: "connected", evolutionPhone: data?.phone, qrcode: null });
+            toast.success(`WhatsApp conectado: ${data?.phone || ""}`);
+          }
+        } catch {}
+      }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [lines]);
 
   const inputClass = "mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30";
 
@@ -256,7 +353,7 @@ export default function Configuracoes() {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-primary" />
-              Linhas WhatsApp Business (Meta)
+              Linhas WhatsApp (Meta ou Evolution)
             </h2>
             <button
               onClick={() => setLines(prev => [...prev, newLine()])}
@@ -301,6 +398,26 @@ export default function Configuracoes() {
               </div>
 
               <div>
+                <label className="text-sm text-muted-foreground">Provedor</label>
+                <div className="flex gap-2 mt-1">
+                  {[
+                    { v: "meta", label: "Meta Cloud API" },
+                    { v: "evolution", label: "Evolution API" },
+                  ].map(p => (
+                    <button key={p.v} type="button"
+                      onClick={() => updateLine(line.id, { provider: p.v as any, validationStatus: "idle", testStatus: "idle" })}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                        line.provider === p.v
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                      }`}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label className="text-sm text-muted-foreground">Categorias atendidas</label>
                 <div className="flex gap-2 mt-1">
                   {CATEGORIAS.map(cat => (
@@ -316,22 +433,87 @@ export default function Configuracoes() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm text-muted-foreground">Access Token (permanente)</label>
-                <input type="password" value={line.token} onChange={e => updateLine(line.id, { token: e.target.value, validationStatus: "idle", testStatus: "idle" })}
-                  placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "Cole aqui o token"}
-                  className={inputClass} />
-              </div>
+              {line.provider === "meta" ? (
+                <>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Access Token (permanente)</label>
+                    <input type="password" value={line.token} onChange={e => updateLine(line.id, { token: e.target.value, validationStatus: "idle", testStatus: "idle" })}
+                      placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "Cole aqui o token"}
+                      className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Phone Number ID</label>
+                    <input type="text" value={line.phoneId} onChange={e => updateLine(line.id, { phoneId: e.target.value, validationStatus: "idle", testStatus: "idle" })}
+                      placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "ID do número"}
+                      className={inputClass} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-sm text-muted-foreground">URL do servidor Evolution</label>
+                    <input type="text" value={line.evolutionUrl} onChange={e => updateLine(line.id, { evolutionUrl: e.target.value })}
+                      placeholder="https://evo.seudominio.com" className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Nome da instância</label>
+                    <input type="text" value={line.evolutionInstance} onChange={e => updateLine(line.id, { evolutionInstance: e.target.value })}
+                      placeholder="ex: clinica-recepcao" className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">API Key</label>
+                    <input type="password" value={line.evolutionApiKey} onChange={e => updateLine(line.id, { evolutionApiKey: e.target.value })}
+                      placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "Cole aqui a API key"}
+                      className={inputClass} />
+                  </div>
 
-              <div>
-                <label className="text-sm text-muted-foreground">Phone Number ID</label>
-                <input type="text" value={line.phoneId} onChange={e => updateLine(line.id, { phoneId: e.target.value, validationStatus: "idle", testStatus: "idle" })}
-                  placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "ID do número"}
-                  className={inputClass} />
-              </div>
+                  {/* Evolution status + actions */}
+                  <div className="border border-border rounded-lg p-3 space-y-3 bg-background">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status do número</p>
+                      <span className={`text-xs font-medium ${
+                        line.evolutionStatus === "connected" ? "text-success" :
+                        line.evolutionStatus === "qr" ? "text-warning" : "text-muted-foreground"
+                      }`}>
+                        {line.evolutionStatus === "connected"
+                          ? `✓ Conectado${line.evolutionPhone ? ` — +${line.evolutionPhone}` : ""}`
+                          : line.evolutionStatus === "qr" ? "Aguardando QR code…" : "Desconectado"}
+                      </span>
+                    </div>
+                    {line.configured && (
+                      <div className="flex gap-2 flex-wrap">
+                        <button onClick={() => handleEvoConnect(line)} disabled={line.qrLoading}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/40 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors disabled:opacity-50">
+                          {line.qrLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <QrCode className="h-3.5 w-3.5" />}
+                          {line.evolutionStatus === "connected" ? "Reconectar" : "Conectar / Gerar QR"}
+                        </button>
+                        <button onClick={() => handleEvoStatus(line)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium hover:bg-muted">
+                          <ShieldCheck className="h-3.5 w-3.5" /> Atualizar status
+                        </button>
+                        {line.evolutionStatus === "connected" && (
+                          <button onClick={() => handleEvoLogout(line)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20">
+                            <LogOut className="h-3.5 w-3.5" /> Desconectar
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {line.qrcode && (
+                      <div className="flex flex-col items-center gap-2 p-3 bg-muted/40 rounded-lg">
+                        <img src={line.qrcode.startsWith("data:") ? line.qrcode : `data:image/png;base64,${line.qrcode}`} alt="QR Code" className="w-48 h-48" />
+                        <p className="text-xs text-muted-foreground text-center">
+                          Escaneie no WhatsApp → Aparelhos conectados → Conectar um aparelho.
+                          <br />A conexão será detectada automaticamente.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Validation & Test Section */}
-              {(line.token.trim() && line.phoneId.trim()) && (
+              {line.provider === "meta" && (line.token.trim() && line.phoneId.trim()) && (
                 <div className="border border-border rounded-lg p-3 space-y-3 bg-background">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Verificação de credenciais</p>
 

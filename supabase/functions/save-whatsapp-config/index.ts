@@ -37,7 +37,8 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, line_id, label, categorias, access_token, phone_number_id, reminder_enabled, confirm_enabled, receipt_enabled, test_phone } = body;
+    const { action, line_id, label, categorias, access_token, phone_number_id, reminder_enabled, confirm_enabled, receipt_enabled, test_phone, provider, evolution_url, evolution_instance, evolution_api_key } = body;
+    const prov = provider || "meta";
 
     // ── Validate / Test credentials ──
     if (action === "validate" || action === "test") {
@@ -109,24 +110,41 @@ serve(async (req) => {
     }
 
     // ── Save config ──
-    if (!access_token || !phone_number_id || !label) {
-      return new Response(JSON.stringify({ error: "Token, Phone Number ID e nome da linha são obrigatórios" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (!label) {
+      return new Response(JSON.stringify({ error: "Nome da linha é obrigatório" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (prov === "meta" && (!access_token || !phone_number_id)) {
+      return new Response(JSON.stringify({ error: "Token e Phone Number ID são obrigatórios para Meta" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (prov === "evolution" && (!evolution_url || !evolution_instance || !evolution_api_key)) {
+      return new Response(JSON.stringify({ error: "URL, instância e API key são obrigatórios para Evolution" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Upsert into whatsapp_lines table
-    const { error: upsertError } = await supabase.from("whatsapp_lines").upsert({
+    const row: any = {
       id: line_id,
       label,
+      provider: prov,
       categorias: categorias || [],
-      access_token,
-      phone_number_id,
       reminder_enabled: reminder_enabled ?? true,
       confirm_enabled: confirm_enabled ?? true,
       receipt_enabled: receipt_enabled ?? true,
-    }, { onConflict: "id" });
+    };
+    if (prov === "meta") {
+      row.access_token = access_token;
+      row.phone_number_id = phone_number_id;
+    } else {
+      row.evolution_url = evolution_url.replace(/\/+$/, "");
+      row.evolution_instance = evolution_instance;
+      row.evolution_api_key = evolution_api_key;
+    }
+
+    const { error: upsertError } = await supabase.from("whatsapp_lines").upsert(row, { onConflict: "id" });
 
     if (upsertError) throw upsertError;
 
