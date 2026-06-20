@@ -398,6 +398,26 @@ export default function Configuracoes() {
               </div>
 
               <div>
+                <label className="text-sm text-muted-foreground">Provedor</label>
+                <div className="flex gap-2 mt-1">
+                  {[
+                    { v: "meta", label: "Meta Cloud API" },
+                    { v: "evolution", label: "Evolution API" },
+                  ].map(p => (
+                    <button key={p.v} type="button"
+                      onClick={() => updateLine(line.id, { provider: p.v as any, validationStatus: "idle", testStatus: "idle" })}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                        line.provider === p.v
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border hover:border-primary/50"
+                      }`}>
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label className="text-sm text-muted-foreground">Categorias atendidas</label>
                 <div className="flex gap-2 mt-1">
                   {CATEGORIAS.map(cat => (
@@ -413,22 +433,87 @@ export default function Configuracoes() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm text-muted-foreground">Access Token (permanente)</label>
-                <input type="password" value={line.token} onChange={e => updateLine(line.id, { token: e.target.value, validationStatus: "idle", testStatus: "idle" })}
-                  placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "Cole aqui o token"}
-                  className={inputClass} />
-              </div>
+              {line.provider === "meta" ? (
+                <>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Access Token (permanente)</label>
+                    <input type="password" value={line.token} onChange={e => updateLine(line.id, { token: e.target.value, validationStatus: "idle", testStatus: "idle" })}
+                      placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "Cole aqui o token"}
+                      className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Phone Number ID</label>
+                    <input type="text" value={line.phoneId} onChange={e => updateLine(line.id, { phoneId: e.target.value, validationStatus: "idle", testStatus: "idle" })}
+                      placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "ID do número"}
+                      className={inputClass} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-sm text-muted-foreground">URL do servidor Evolution</label>
+                    <input type="text" value={line.evolutionUrl} onChange={e => updateLine(line.id, { evolutionUrl: e.target.value })}
+                      placeholder="https://evo.seudominio.com" className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Nome da instância</label>
+                    <input type="text" value={line.evolutionInstance} onChange={e => updateLine(line.id, { evolutionInstance: e.target.value })}
+                      placeholder="ex: clinica-recepcao" className={inputClass} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">API Key</label>
+                    <input type="password" value={line.evolutionApiKey} onChange={e => updateLine(line.id, { evolutionApiKey: e.target.value })}
+                      placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "Cole aqui a API key"}
+                      className={inputClass} />
+                  </div>
 
-              <div>
-                <label className="text-sm text-muted-foreground">Phone Number ID</label>
-                <input type="text" value={line.phoneId} onChange={e => updateLine(line.id, { phoneId: e.target.value, validationStatus: "idle", testStatus: "idle" })}
-                  placeholder={line.configured ? "••••••••••• (já salvo — preencha para atualizar)" : "ID do número"}
-                  className={inputClass} />
-              </div>
+                  {/* Evolution status + actions */}
+                  <div className="border border-border rounded-lg p-3 space-y-3 bg-background">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status do número</p>
+                      <span className={`text-xs font-medium ${
+                        line.evolutionStatus === "connected" ? "text-success" :
+                        line.evolutionStatus === "qr" ? "text-warning" : "text-muted-foreground"
+                      }`}>
+                        {line.evolutionStatus === "connected"
+                          ? `✓ Conectado${line.evolutionPhone ? ` — +${line.evolutionPhone}` : ""}`
+                          : line.evolutionStatus === "qr" ? "Aguardando QR code…" : "Desconectado"}
+                      </span>
+                    </div>
+                    {line.configured && (
+                      <div className="flex gap-2 flex-wrap">
+                        <button onClick={() => handleEvoConnect(line)} disabled={line.qrLoading}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/40 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors disabled:opacity-50">
+                          {line.qrLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <QrCode className="h-3.5 w-3.5" />}
+                          {line.evolutionStatus === "connected" ? "Reconectar" : "Conectar / Gerar QR"}
+                        </button>
+                        <button onClick={() => handleEvoStatus(line)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium hover:bg-muted">
+                          <ShieldCheck className="h-3.5 w-3.5" /> Atualizar status
+                        </button>
+                        {line.evolutionStatus === "connected" && (
+                          <button onClick={() => handleEvoLogout(line)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20">
+                            <LogOut className="h-3.5 w-3.5" /> Desconectar
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {line.qrcode && (
+                      <div className="flex flex-col items-center gap-2 p-3 bg-muted/40 rounded-lg">
+                        <img src={line.qrcode.startsWith("data:") ? line.qrcode : `data:image/png;base64,${line.qrcode}`} alt="QR Code" className="w-48 h-48" />
+                        <p className="text-xs text-muted-foreground text-center">
+                          Escaneie no WhatsApp → Aparelhos conectados → Conectar um aparelho.
+                          <br />A conexão será detectada automaticamente.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Validation & Test Section */}
-              {(line.token.trim() && line.phoneId.trim()) && (
+              {line.provider === "meta" && (line.token.trim() && line.phoneId.trim()) && (
                 <div className="border border-border rounded-lg p-3 space-y-3 bg-background">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Verificação de credenciais</p>
 
