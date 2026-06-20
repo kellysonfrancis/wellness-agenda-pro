@@ -293,7 +293,7 @@ serve(async (req: Request) => {
       // Record rate limit
       await recordRequest(client, clientIP);
 
-      const { data: svc } = await client.from("services").select("duracao_min, categoria").eq("id", service_id).single();
+      const { data: svc } = await client.from("services").select("duracao_min, categoria, max_alunos").eq("id", service_id).single();
       if (!svc) {
         return new Response(JSON.stringify({ error: "Serviço não encontrado" }), {
           status: 404, headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -341,6 +341,28 @@ serve(async (req: Request) => {
       }
 
       const fimEm = new Date(new Date(inicio_em).getTime() + svc.duracao_min * 60000).toISOString();
+
+      // Capacity / overlap check
+      const maxAlunos = (svc as any).max_alunos ?? 1;
+      const { data: existingAppts } = await client
+        .from("appointments")
+        .select("inicio_em, fim_em, service_id")
+        .eq("profissional_id", profissional_id)
+        .not("status", "in", '("cancelado","faltou")')
+        .lt("inicio_em", fimEm)
+        .gt("fim_em", inicio_em);
+
+      if (existingAppts && existingAppts.length > 0) {
+        const sameSlotSameService = existingAppts.filter(
+          (a: any) => a.service_id === service_id && a.inicio_em === inicio_em,
+        ).length;
+        const differentService = existingAppts.some((a: any) => a.service_id !== service_id);
+        if (differentService || sameSlotSameService >= maxAlunos) {
+          return new Response(JSON.stringify({ error: "Horário não está mais disponível" }), {
+            status: 409, headers: { "Content-Type": "application/json", ...corsHeaders },
+          });
+        }
+      }
 
       let clientId: string;
       const { data: existingClient } = await client
