@@ -353,7 +353,7 @@ export default function Configuracoes() {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-primary" />
-              Linhas WhatsApp Business (Meta)
+              Linhas WhatsApp (Meta ou Evolution)
             </h2>
             <button
               onClick={() => setLines(prev => [...prev, newLine()])}
