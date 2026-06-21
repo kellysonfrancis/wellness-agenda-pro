@@ -393,6 +393,22 @@ export default function VendaRapida() {
             </Button>
           </div>
         </div>
+        {isRecurringPlan && (
+          <div className="mt-4 p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="text-sm font-semibold">Plano recorrente detectado</p>
+              <p className="text-xs text-muted-foreground">Cobre via assinatura mensal automática (Asaas ou Mercado Pago, conforme configurado).</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={!clientId || createSubscription.isPending} onClick={() => createSubscription.mutate("PIX")}>
+                Cobrar via PIX
+              </Button>
+              <Button size="sm" disabled={!clientId || createSubscription.isPending} onClick={() => createSubscription.mutate("CREDIT_CARD")}>
+                Cobrar via assinatura
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Recent sales */}
