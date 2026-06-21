@@ -624,6 +624,39 @@ export type Database = {
           },
         ]
       }
+      health_insurers: {
+        Row: {
+          ativo: boolean
+          codigo_prestador: string | null
+          created_at: string
+          id: string
+          nome: string
+          registro_ans: string | null
+          updated_at: string
+          versao_tiss: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo_prestador?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          registro_ans?: string | null
+          updated_at?: string
+          versao_tiss?: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo_prestador?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          registro_ans?: string | null
+          updated_at?: string
+          versao_tiss?: string
+        }
+        Relationships: []
+      }
       holidays: {
         Row: {
           created_at: string
@@ -1748,6 +1781,160 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tiss_batches: {
+        Row: {
+          created_at: string
+          enviado_em: string | null
+          id: string
+          insurer_id: string
+          numero_lote: string
+          status: string
+          total_guias: number
+          updated_at: string
+          valor_total: number
+          versao_tiss: string | null
+          xml: string | null
+        }
+        Insert: {
+          created_at?: string
+          enviado_em?: string | null
+          id?: string
+          insurer_id: string
+          numero_lote: string
+          status?: string
+          total_guias?: number
+          updated_at?: string
+          valor_total?: number
+          versao_tiss?: string | null
+          xml?: string | null
+        }
+        Update: {
+          created_at?: string
+          enviado_em?: string | null
+          id?: string
+          insurer_id?: string
+          numero_lote?: string
+          status?: string
+          total_guias?: number
+          updated_at?: string
+          valor_total?: number
+          versao_tiss?: string | null
+          xml?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiss_batches_insurer_id_fkey"
+            columns: ["insurer_id"]
+            isOneToOne: false
+            referencedRelation: "health_insurers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tiss_guides: {
+        Row: {
+          appointment_id: string | null
+          batch_id: string | null
+          client_id: string
+          created_at: string
+          dados: Json
+          id: string
+          insurer_id: string
+          numero_guia: string | null
+          observacao: string | null
+          status: string
+          tipo: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          appointment_id?: string | null
+          batch_id?: string | null
+          client_id: string
+          created_at?: string
+          dados?: Json
+          id?: string
+          insurer_id: string
+          numero_guia?: string | null
+          observacao?: string | null
+          status?: string
+          tipo: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          appointment_id?: string | null
+          batch_id?: string | null
+          client_id?: string
+          created_at?: string
+          dados?: Json
+          id?: string
+          insurer_id?: string
+          numero_guia?: string | null
+          observacao?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiss_guides_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tiss_guides_batch_fk"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "tiss_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tiss_guides_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tiss_guides_insurer_id_fkey"
+            columns: ["insurer_id"]
+            isOneToOne: false
+            referencedRelation: "health_insurers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tiss_procedures: {
+        Row: {
+          codigo: string
+          created_at: string
+          descricao: string
+          id: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          descricao: string
+          id?: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
