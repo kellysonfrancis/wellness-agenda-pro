@@ -82,7 +82,8 @@ serve(async (req) => {
     // Check if this message type is enabled on this line
     const typeEnabled = (tipo === "lembrete" && line.reminder_enabled) ||
                         (tipo === "confirmacao" && line.confirm_enabled) ||
-                        (tipo === "recibo" && line.receipt_enabled);
+                        (tipo === "recibo" && line.receipt_enabled) ||
+                        (tipo === "notificacao" && line.reminder_enabled);
 
     if (!typeEnabled) {
       return new Response(JSON.stringify({ error: `Tipo "${tipo}" não está habilitado na linha "${line.label}"` }), {
