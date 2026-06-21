@@ -452,6 +452,36 @@ export type Database = {
         }
         Relationships: []
       }
+      consent_templates: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          conteudo: string
+          created_at: string
+          id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria: string
+          conteudo: string
+          created_at?: string
+          id?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          conteudo?: string
+          created_at?: string
+          id?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       evolution_photos: {
         Row: {
           client_id: string
@@ -1415,6 +1445,60 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      signed_consents: {
+        Row: {
+          assinado_em: string
+          assinante_nome: string
+          client_id: string
+          conteudo_assinado: string
+          created_at: string
+          id: string
+          ip: string | null
+          template_id: string | null
+          titulo: string
+          user_agent: string | null
+        }
+        Insert: {
+          assinado_em?: string
+          assinante_nome: string
+          client_id: string
+          conteudo_assinado: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          template_id?: string | null
+          titulo: string
+          user_agent?: string | null
+        }
+        Update: {
+          assinado_em?: string
+          assinante_nome?: string
+          client_id?: string
+          conteudo_assinado?: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          template_id?: string | null
+          titulo?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signed_consents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signed_consents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "consent_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
