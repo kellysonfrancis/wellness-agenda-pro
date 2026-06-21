@@ -1061,6 +1061,54 @@ export type Database = {
           },
         ]
       }
+      satisfaction_surveys: {
+        Row: {
+          appointment_id: string
+          client_id: string
+          comentario: string | null
+          created_at: string
+          enviado_em: string
+          id: string
+          nota: number | null
+          respondido_em: string | null
+        }
+        Insert: {
+          appointment_id: string
+          client_id: string
+          comentario?: string | null
+          created_at?: string
+          enviado_em?: string
+          id?: string
+          nota?: number | null
+          respondido_em?: string | null
+        }
+        Update: {
+          appointment_id?: string
+          client_id?: string
+          comentario?: string | null
+          created_at?: string
+          enviado_em?: string
+          id?: string
+          nota?: number | null
+          respondido_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "satisfaction_surveys_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: true
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "satisfaction_surveys_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           ativo: boolean
