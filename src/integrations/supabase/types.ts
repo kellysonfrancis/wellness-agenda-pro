@@ -363,9 +363,11 @@ export type Database = {
           client_id: string
           conteudo: string
           created_at: string
+          dados: Json | null
           data_registro: string
           id: string
           profissional_id: string
+          template_id: string | null
           tipo: Database["public"]["Enums"]["clinical_record_type"]
           updated_at: string
         }
@@ -374,9 +376,11 @@ export type Database = {
           client_id: string
           conteudo: string
           created_at?: string
+          dados?: Json | null
           data_registro?: string
           id?: string
           profissional_id: string
+          template_id?: string | null
           tipo?: Database["public"]["Enums"]["clinical_record_type"]
           updated_at?: string
         }
@@ -385,9 +389,11 @@ export type Database = {
           client_id?: string
           conteudo?: string
           created_at?: string
+          dados?: Json | null
           data_registro?: string
           id?: string
           profissional_id?: string
+          template_id?: string | null
           tipo?: Database["public"]["Enums"]["clinical_record_type"]
           updated_at?: string
         }
@@ -411,6 +417,13 @@ export type Database = {
             columns: ["profissional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_records_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "record_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -738,6 +751,57 @@ export type Database = {
           },
         ]
       }
+      physical_assessments: {
+        Row: {
+          altura: number | null
+          client_id: string
+          created_at: string
+          data: string
+          id: string
+          medidas: Json | null
+          observacoes: string | null
+          peso: number | null
+          profissional_id: string | null
+        }
+        Insert: {
+          altura?: number | null
+          client_id: string
+          created_at?: string
+          data?: string
+          id?: string
+          medidas?: Json | null
+          observacoes?: string | null
+          peso?: number | null
+          profissional_id?: string | null
+        }
+        Update: {
+          altura?: number | null
+          client_id?: string
+          created_at?: string
+          data?: string
+          id?: string
+          medidas?: Json | null
+          observacoes?: string | null
+          peso?: number | null
+          profissional_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "physical_assessments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "physical_assessments_profissional_id_fkey"
+            columns: ["profissional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_plans: {
         Row: {
           ativo: boolean
@@ -988,6 +1052,36 @@ export type Database = {
           endpoint?: string
           id?: string
           ip_address?: string
+        }
+        Relationships: []
+      }
+      record_templates: {
+        Row: {
+          ativo: boolean
+          campos: Json
+          categoria: string
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          campos?: Json
+          categoria: string
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          campos?: Json
+          categoria?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
         }
         Relationships: []
       }
