@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.evolution-webhook]
 verify_jwt = false
+
+[functions.check-birthday-greetings]
+verify_jwt = false
+
+[functions.check-entitlement-expiry]
+verify_jwt = false
