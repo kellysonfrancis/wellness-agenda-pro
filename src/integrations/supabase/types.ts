@@ -452,6 +452,60 @@ export type Database = {
         }
         Relationships: []
       }
+      evolution_photos: {
+        Row: {
+          client_id: string
+          consentimento: boolean
+          consentimento_redes: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          observacao: string | null
+          path: string
+          record_id: string | null
+          tipo: string
+        }
+        Insert: {
+          client_id: string
+          consentimento?: boolean
+          consentimento_redes?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          observacao?: string | null
+          path: string
+          record_id?: string | null
+          tipo: string
+        }
+        Update: {
+          client_id?: string
+          consentimento?: boolean
+          consentimento_redes?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          observacao?: string | null
+          path?: string
+          record_id?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evolution_photos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolution_photos_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "clinical_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           categoria: Database["public"]["Enums"]["expense_category"]
