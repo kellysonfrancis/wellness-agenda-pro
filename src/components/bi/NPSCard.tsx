@@ -11,7 +11,7 @@ export default function NPSCard() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("satisfaction_surveys")
         .select("nota")
         .not("nota", "is", null);
