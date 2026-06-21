@@ -1188,6 +1188,7 @@ export type Database = {
       whatsapp_lines: {
         Row: {
           access_token: string | null
+          birthday_enabled: boolean
           categorias: string[]
           confirm_enabled: boolean
           created_at: string
@@ -1196,6 +1197,7 @@ export type Database = {
           evolution_phone: string | null
           evolution_status: string | null
           evolution_url: string | null
+          expiry_enabled: boolean
           id: string
           label: string
           phone_number_id: string | null
@@ -1206,6 +1208,7 @@ export type Database = {
         }
         Insert: {
           access_token?: string | null
+          birthday_enabled?: boolean
           categorias?: string[]
           confirm_enabled?: boolean
           created_at?: string
@@ -1214,6 +1217,7 @@ export type Database = {
           evolution_phone?: string | null
           evolution_status?: string | null
           evolution_url?: string | null
+          expiry_enabled?: boolean
           id?: string
           label: string
           phone_number_id?: string | null
@@ -1224,6 +1228,7 @@ export type Database = {
         }
         Update: {
           access_token?: string | null
+          birthday_enabled?: boolean
           categorias?: string[]
           confirm_enabled?: boolean
           created_at?: string
@@ -1232,6 +1237,7 @@ export type Database = {
           evolution_phone?: string | null
           evolution_status?: string | null
           evolution_url?: string | null
+          expiry_enabled?: boolean
           id?: string
           label?: string
           phone_number_id?: string | null
@@ -1245,8 +1251,10 @@ export type Database = {
       whatsapp_log: {
         Row: {
           appointment_id: string | null
+          client_id: string | null
           created_at: string
           destinatario: string
+          entitlement_id: string | null
           erro: string | null
           id: string
           line_id: string | null
@@ -1256,8 +1264,10 @@ export type Database = {
         }
         Insert: {
           appointment_id?: string | null
+          client_id?: string | null
           created_at?: string
           destinatario: string
+          entitlement_id?: string | null
           erro?: string | null
           id?: string
           line_id?: string | null
@@ -1267,8 +1277,10 @@ export type Database = {
         }
         Update: {
           appointment_id?: string | null
+          client_id?: string | null
           created_at?: string
           destinatario?: string
+          entitlement_id?: string | null
           erro?: string | null
           id?: string
           line_id?: string | null
@@ -1282,6 +1294,20 @@ export type Database = {
             columns: ["appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_log_entitlement_id_fkey"
+            columns: ["entitlement_id"]
+            isOneToOne: false
+            referencedRelation: "client_entitlements"
             referencedColumns: ["id"]
           },
           {
