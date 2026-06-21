@@ -586,6 +586,84 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_items: {
+        Row: {
+          created_at: string
+          custo_unitario: number
+          estoque_minimo: number
+          id: string
+          nome: string
+          quantidade: number
+          unidade: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          custo_unitario?: number
+          estoque_minimo?: number
+          id?: string
+          nome: string
+          quantidade?: number
+          unidade?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          custo_unitario?: number
+          estoque_minimo?: number
+          id?: string
+          nome?: string
+          quantidade?: number
+          unidade?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory_movements: {
+        Row: {
+          appointment_id: string | null
+          created_at: string
+          id: string
+          item_id: string
+          motivo: string | null
+          quantidade: number
+          tipo: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string
+          id?: string
+          item_id: string
+          motivo?: string | null
+          quantidade: number
+          tipo: string
+        }
+        Update: {
+          appointment_id?: string | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          motivo?: string | null
+          quantidade?: number
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       landing_config: {
         Row: {
           banner_url: string | null
@@ -1256,6 +1334,45 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_consumption: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          quantidade: number
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          quantidade?: number
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          quantidade?: number
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_consumption_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_consumption_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
