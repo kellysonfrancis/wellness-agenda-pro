@@ -540,6 +540,21 @@ export default function Clientes() {
                 <label className="text-sm text-muted-foreground">Observações</label>
                 <textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30" rows={2} />
               </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Origem de captação</label>
+                <select
+                  value={form.origem_captacao}
+                  onChange={(e) => setForm({ ...form, origem_captacao: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+                >
+                  <option value="">— Não informado —</option>
+                  <option value="indicacao">Indicação</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="google">Google</option>
+                  <option value="fachada">Fachada</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
               <div className="flex gap-2 pt-2">
                 <button type="submit" disabled={saving} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
