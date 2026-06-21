@@ -65,6 +65,7 @@ const navEntries: NavEntry[] = [
       { label: "Despesas", path: "/despesas", icon: Receipt, roles: ["admin"] },
       { label: "Inadimplência", path: "/inadimplencia", icon: AlertTriangle, roles: ["admin"] },
       { label: "Projeção Receita", path: "/projecao-receita", icon: TrendingUp, roles: ["admin"] },
+      { label: "TISS / Convênios", path: "/tiss", icon: FileSpreadsheet, roles: ["admin", "recepcao"] },
     ],
   },
   {
