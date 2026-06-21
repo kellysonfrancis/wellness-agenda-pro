@@ -5,6 +5,8 @@ import { DollarSign, TrendingUp, AlertCircle, CheckCircle, Loader2 } from "lucid
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ContasBancarias from "@/components/financeiro/ContasBancarias";
 import ReceiptButton from "@/components/financeiro/ReceiptGenerator";
+import NfseButton from "@/components/financeiro/NfseButton";
+import InvoicesList from "@/components/financeiro/InvoicesList";
 import { useToast } from "@/hooks/use-toast";
 
 interface DBPayment {
@@ -66,6 +68,7 @@ export default function Financeiro() {
         <TabsList className="mb-6">
           <TabsTrigger value="pagamentos">Pagamentos</TabsTrigger>
           <TabsTrigger value="contas">Contas Bancárias</TabsTrigger>
+          <TabsTrigger value="nfse">NFS-e</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pagamentos">
@@ -135,10 +138,11 @@ export default function Financeiro() {
                       <th className="text-left p-4 font-medium text-muted-foreground">Conta Destino</th>
                       <th className="text-left p-4 font-medium text-muted-foreground">Data</th>
                       <th className="text-left p-4 font-medium text-muted-foreground">Recibo</th>
+                      <th className="text-left p-4 font-medium text-muted-foreground">NFS-e</th>
                     </tr></thead>
                     <tbody className="divide-y divide-border">
                       {pagos.length === 0 ? (
-                        <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhum pagamento registrado</td></tr>
+                        <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhum pagamento registrado</td></tr>
                       ) : pagos.map(p => (
                         <tr key={p.id} className="hover:bg-muted/30">
                           <td className="p-4">{p.client?.nome || "—"}</td>
@@ -147,6 +151,7 @@ export default function Financeiro() {
                           <td className="p-4">{p.bank_account?.nome || <span className="text-muted-foreground">—</span>}</td>
                           <td className="p-4">{p.pago_em ? new Date(p.pago_em).toLocaleDateString("pt-BR") : "—"}</td>
                           <td className="p-4"><ReceiptButton payment={{ ...p, client_telefone: p.client?.telefone, client_id: p.client_id, appointment_id: p.appointment_id }} /></td>
+                          <td className="p-4"><NfseButton paymentId={p.id} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -159,6 +164,10 @@ export default function Financeiro() {
 
         <TabsContent value="contas">
           <ContasBancarias />
+        </TabsContent>
+
+        <TabsContent value="nfse">
+          <InvoicesList />
         </TabsContent>
       </Tabs>
     </GlobalLayout>

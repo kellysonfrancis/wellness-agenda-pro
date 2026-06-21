@@ -50,3 +50,12 @@ verify_jwt = false
 
 [functions.check-abandonment]
 verify_jwt = false
+
+[functions.save-nfse-config]
+verify_jwt = false
+
+[functions.issue-nfse]
+verify_jwt = false
+
+[functions.nfse-webhook]
+verify_jwt = false
