@@ -195,6 +195,7 @@ export default function Clientes() {
       email: c.email || "",
       data_nascimento: c.data_nascimento || "",
       observacoes: c.observacoes || "",
+      origem_captacao: c.origem_captacao || "",
     });
     setShowForm(true);
   };
@@ -212,6 +213,7 @@ export default function Clientes() {
       email: form.email.trim() || null,
       data_nascimento: form.data_nascimento || null,
       observacoes: form.observacoes.trim() || null,
+      origem_captacao: form.origem_captacao || null,
     };
 
     if (editingId) {
