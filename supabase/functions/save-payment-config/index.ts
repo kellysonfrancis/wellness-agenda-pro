@@ -40,13 +40,18 @@ serve(async (req) => {
     }
 
     if (!provider || !["asaas", "mercadopago"].includes(provider)) return j({ error: "Provider inválido" }, 400);
-    if (!api_key) return j({ error: "API key obrigatória" }, 400);
+
+    // Sentinel "__keep__" => não altera o campo
+    const { data: current } = await admin.from("payment_settings").select("*").eq("provider", provider).maybeSingle();
+    const finalApiKey = api_key === "__keep__" ? current?.api_key : api_key;
+    const finalSecret = webhook_secret === "__keep__" ? current?.webhook_secret : webhook_secret;
+    if (!finalApiKey) return j({ error: "API key obrigatória" }, 400);
 
     const row: any = {
       provider,
       mode: mode || "sandbox",
-      api_key,
-      webhook_secret: webhook_secret || null,
+      api_key: finalApiKey,
+      webhook_secret: finalSecret || null,
       is_active: !!is_active,
       updated_at: new Date().toISOString(),
     };
