@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Calendar, Users, DollarSign, Sparkles,
   Package, Settings, CalendarPlus, CalendarCheck, ShoppingBag,
   LogOut, Menu, X, BarChart3, Receipt, UserCog, Tags, Stethoscope, HandCoins, ShoppingCart, AlertTriangle, Activity, UserX, TrendingUp, ClipboardList, ListOrdered,
-  MessageSquare, ChevronDown, FolderOpen, FileText, Sun, Moon, Boxes, Brain
+  MessageSquare, ChevronDown, FolderOpen, FileText, Sun, Moon, Boxes, Brain, FileSpreadsheet
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
