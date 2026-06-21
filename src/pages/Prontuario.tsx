@@ -14,6 +14,9 @@ import { ClipboardList, Search, Plus, Clock, FileText, UserCheck, LogOut as LogO
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import TemplateForm, { type TemplateField } from "@/components/prontuario/TemplateForm";
+import BodyMap, { type BodyMark } from "@/components/prontuario/BodyMap";
+import PhysicalAssessments from "@/components/prontuario/PhysicalAssessments";
 
 const tipoLabel: Record<string, string> = {
   anamnese: "Anamnese",
@@ -45,6 +48,25 @@ export default function Prontuario() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formTipo, setFormTipo] = useState<string>("evolucao");
   const [formConteudo, setFormConteudo] = useState("");
+  const [tab, setTab] = useState<"timeline" | "fisica">("timeline");
+  const [templateId, setTemplateId] = useState<string>("");
+  const [templateValues, setTemplateValues] = useState<Record<string, any>>({});
+  const [bodyMarks, setBodyMarks] = useState<BodyMark[]>([]);
+
+  // Templates
+  const { data: templates = [] } = useQuery({
+    queryKey: ["record-templates"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("record_templates")
+        .select("id, categoria, nome, campos")
+        .eq("ativo", true)
+        .order("categoria");
+      if (error) throw error;
+      return (data || []) as { id: string; categoria: string; nome: string; campos: TemplateField[] }[];
+    },
+  });
+  const selectedTemplate = templates.find((t) => t.id === templateId);
 
   // Clients
   const { data: clients = [] } = useQuery({
@@ -108,7 +130,19 @@ export default function Prontuario() {
   // Insert mutation
   const insertRecord = useMutation({
     mutationFn: async () => {
-      if (!selectedClient || !formConteudo.trim()) throw new Error("Preencha todos os campos");
+      if (!selectedClient) throw new Error("Selecione um paciente");
+      const hasTemplateData = selectedTemplate && Object.keys(templateValues).length > 0;
+      const hasBody = bodyMarks.length > 0;
+      if (!formConteudo.trim() && !hasTemplateData && !hasBody) {
+        throw new Error("Preencha o conteúdo, o template ou marque o mapa corporal");
+      }
+
+      const dados: any = {};
+      if (selectedTemplate) {
+        dados.template = { id: selectedTemplate.id, nome: selectedTemplate.nome, categoria: selectedTemplate.categoria };
+        dados.respostas = templateValues;
+      }
+      if (bodyMarks.length > 0) dados.body_marks = bodyMarks;
 
       const profId = currentProfessional?.id;
       if (!profId) {
@@ -121,19 +155,23 @@ export default function Prontuario() {
           .maybeSingle();
         if (!firstProf) throw new Error("Nenhum profissional encontrado");
 
-        const { error } = await supabase.from("clinical_records").insert({
+        const { error } = await (supabase as any).from("clinical_records").insert({
           client_id: selectedClient,
           profissional_id: firstProf.id,
           tipo: formTipo as any,
-          conteudo: formConteudo.trim(),
+          conteudo: formConteudo.trim() || (selectedTemplate ? `[${selectedTemplate.nome}]` : "Mapa corporal"),
+          template_id: templateId || null,
+          dados: Object.keys(dados).length ? dados : null,
         });
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("clinical_records").insert({
+        const { error } = await (supabase as any).from("clinical_records").insert({
           client_id: selectedClient,
           profissional_id: profId,
           tipo: formTipo as any,
-          conteudo: formConteudo.trim(),
+          conteudo: formConteudo.trim() || (selectedTemplate ? `[${selectedTemplate.nome}]` : "Mapa corporal"),
+          template_id: templateId || null,
+          dados: Object.keys(dados).length ? dados : null,
         });
         if (error) throw error;
       }
@@ -143,6 +181,9 @@ export default function Prontuario() {
       setDialogOpen(false);
       setFormConteudo("");
       setFormTipo("evolucao");
+      setTemplateId("");
+      setTemplateValues({});
+      setBodyMarks([]);
       toast.success("Registro adicionado com sucesso");
     },
     onError: (err: Error) => toast.error(err.message),
