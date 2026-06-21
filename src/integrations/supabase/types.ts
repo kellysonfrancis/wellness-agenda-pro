@@ -846,17 +846,54 @@ export type Database = {
           },
         ]
       }
+      payment_settings: {
+        Row: {
+          api_key: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          mode: string
+          provider: string
+          updated_at: string
+          webhook_secret: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          mode?: string
+          provider: string
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          mode?: string
+          provider?: string
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           appointment_id: string | null
           client_id: string
           conta_destino_id: string | null
           created_at: string
+          gateway_status: string | null
           id: string
           metodo: Database["public"]["Enums"]["payment_method"]
           pago_em: string | null
+          provider: string | null
+          provider_payment_id: string | null
           referencia: string | null
           status: Database["public"]["Enums"]["payment_status"]
+          subscription_id: string | null
           updated_at: string
           valor_pago: number
           valor_total: number
@@ -866,11 +903,15 @@ export type Database = {
           client_id: string
           conta_destino_id?: string | null
           created_at?: string
+          gateway_status?: string | null
           id?: string
           metodo?: Database["public"]["Enums"]["payment_method"]
           pago_em?: string | null
+          provider?: string | null
+          provider_payment_id?: string | null
           referencia?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          subscription_id?: string | null
           updated_at?: string
           valor_pago?: number
           valor_total?: number
@@ -880,11 +921,15 @@ export type Database = {
           client_id?: string
           conta_destino_id?: string | null
           created_at?: string
+          gateway_status?: string | null
           id?: string
           metodo?: Database["public"]["Enums"]["payment_method"]
           pago_em?: string | null
+          provider?: string | null
+          provider_payment_id?: string | null
           referencia?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          subscription_id?: string | null
           updated_at?: string
           valor_pago?: number
           valor_total?: number
@@ -909,6 +954,13 @@ export type Database = {
             columns: ["conta_destino_id"]
             isOneToOne: false
             referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -1496,6 +1548,66 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "consent_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          periodicidade: string
+          plan_id: string | null
+          provider: string
+          provider_customer_id: string | null
+          provider_subscription_id: string | null
+          proxima_cobranca: string | null
+          status: string
+          updated_at: string
+          valor: number | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          periodicidade?: string
+          plan_id?: string | null
+          provider: string
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          proxima_cobranca?: string | null
+          status?: string
+          updated_at?: string
+          valor?: number | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          periodicidade?: string
+          plan_id?: string | null
+          provider?: string
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          proxima_cobranca?: string | null
+          status?: string
+          updated_at?: string
+          valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "product_plans"
             referencedColumns: ["id"]
           },
         ]
