@@ -86,7 +86,36 @@ serve(async (req) => {
           if (msg.type !== "text") continue;
 
           const from = msg.from; // phone number
-          const text = (msg.text?.body || "").trim().toUpperCase();
+          const rawText = (msg.text?.body || "").trim();
+          const text = rawText.toUpperCase();
+
+          // --- NPS reply handling (nota 1-5) ---
+          const npsMatch = rawText.match(/^\s*([1-5])\b/);
+          if (npsMatch) {
+            const { data: npsLogs } = await db
+              .from("whatsapp_log")
+              .select("id, appointment_id, client_id, created_at")
+              .eq("destinatario", from)
+              .eq("tipo", "nps")
+              .eq("status", "enviado")
+              .order("created_at", { ascending: false })
+              .limit(1);
+
+            if (npsLogs && npsLogs.length > 0) {
+              const npsLog = npsLogs[0];
+              if (npsLog.appointment_id) {
+                const nota = parseInt(npsMatch[1], 10);
+                const comentario = rawText.replace(/^\s*[1-5]\s*[-:.,]?\s*/, "").trim() || null;
+                await db.from("satisfaction_surveys")
+                  .update({ nota, comentario, respondido_em: new Date().toISOString() })
+                  .eq("appointment_id", npsLog.appointment_id);
+                await db.from("whatsapp_log")
+                  .update({ status: "respondido_cliente" })
+                  .eq("id", npsLog.id);
+                continue;
+              }
+            }
+          }
 
           if (text !== "SIM" && text !== "NÃO" && text !== "NAO") continue;
 
