@@ -357,6 +357,41 @@ export type Database = {
         }
         Relationships: []
       }
+      clinical_insights: {
+        Row: {
+          client_id: string
+          conteudo: string
+          created_at: string
+          gerado_em: string
+          id: string
+          tipo: string
+        }
+        Insert: {
+          client_id: string
+          conteudo: string
+          created_at?: string
+          gerado_em?: string
+          id?: string
+          tipo: string
+        }
+        Update: {
+          client_id?: string
+          conteudo?: string
+          created_at?: string
+          gerado_em?: string
+          id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_insights_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_records: {
         Row: {
           appointment_id: string | null
