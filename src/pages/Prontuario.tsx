@@ -14,6 +14,9 @@ import { ClipboardList, Search, Plus, Clock, FileText, UserCheck, LogOut as LogO
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import TemplateForm, { type TemplateField } from "@/components/prontuario/TemplateForm";
+import BodyMap, { type BodyMark } from "@/components/prontuario/BodyMap";
+import PhysicalAssessments from "@/components/prontuario/PhysicalAssessments";
 
 const tipoLabel: Record<string, string> = {
   anamnese: "Anamnese",
@@ -45,6 +48,25 @@ export default function Prontuario() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formTipo, setFormTipo] = useState<string>("evolucao");
   const [formConteudo, setFormConteudo] = useState("");
+  const [tab, setTab] = useState<"timeline" | "fisica">("timeline");
+  const [templateId, setTemplateId] = useState<string>("");
+  const [templateValues, setTemplateValues] = useState<Record<string, any>>({});
+  const [bodyMarks, setBodyMarks] = useState<BodyMark[]>([]);
+
+  // Templates
+  const { data: templates = [] } = useQuery({
+    queryKey: ["record-templates"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("record_templates")
+        .select("id, categoria, nome, campos")
+        .eq("ativo", true)
+        .order("categoria");
+      if (error) throw error;
+      return (data || []) as { id: string; categoria: string; nome: string; campos: TemplateField[] }[];
+    },
+  });
+  const selectedTemplate = templates.find((t) => t.id === templateId);
 
   // Clients
   const { data: clients = [] } = useQuery({
@@ -108,7 +130,19 @@ export default function Prontuario() {
   // Insert mutation
   const insertRecord = useMutation({
     mutationFn: async () => {
-      if (!selectedClient || !formConteudo.trim()) throw new Error("Preencha todos os campos");
+      if (!selectedClient) throw new Error("Selecione um paciente");
+      const hasTemplateData = selectedTemplate && Object.keys(templateValues).length > 0;
+      const hasBody = bodyMarks.length > 0;
+      if (!formConteudo.trim() && !hasTemplateData && !hasBody) {
+        throw new Error("Preencha o conteúdo, o template ou marque o mapa corporal");
+      }
+
+      const dados: any = {};
+      if (selectedTemplate) {
+        dados.template = { id: selectedTemplate.id, nome: selectedTemplate.nome, categoria: selectedTemplate.categoria };
+        dados.respostas = templateValues;
+      }
+      if (bodyMarks.length > 0) dados.body_marks = bodyMarks;
 
       const profId = currentProfessional?.id;
       if (!profId) {
@@ -121,19 +155,23 @@ export default function Prontuario() {
           .maybeSingle();
         if (!firstProf) throw new Error("Nenhum profissional encontrado");
 
-        const { error } = await supabase.from("clinical_records").insert({
+        const { error } = await (supabase as any).from("clinical_records").insert({
           client_id: selectedClient,
           profissional_id: firstProf.id,
           tipo: formTipo as any,
-          conteudo: formConteudo.trim(),
+          conteudo: formConteudo.trim() || (selectedTemplate ? `[${selectedTemplate.nome}]` : "Mapa corporal"),
+          template_id: templateId || null,
+          dados: Object.keys(dados).length ? dados : null,
         });
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("clinical_records").insert({
+        const { error } = await (supabase as any).from("clinical_records").insert({
           client_id: selectedClient,
           profissional_id: profId,
           tipo: formTipo as any,
-          conteudo: formConteudo.trim(),
+          conteudo: formConteudo.trim() || (selectedTemplate ? `[${selectedTemplate.nome}]` : "Mapa corporal"),
+          template_id: templateId || null,
+          dados: Object.keys(dados).length ? dados : null,
         });
         if (error) throw error;
       }
@@ -143,6 +181,9 @@ export default function Prontuario() {
       setDialogOpen(false);
       setFormConteudo("");
       setFormTipo("evolucao");
+      setTemplateId("");
+      setTemplateValues({});
+      setBodyMarks([]);
       toast.success("Registro adicionado com sucesso");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -237,6 +278,11 @@ export default function Prontuario() {
                   <p className="text-sm text-muted-foreground">{records.length} registro(s)</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <div className="flex rounded-lg border border-border p-0.5 bg-muted/30">
+                    <button onClick={() => setTab("timeline")} className={`px-3 py-1.5 text-xs rounded-md transition-colors ${tab === "timeline" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>Timeline</button>
+                    <button onClick={() => setTab("fisica")} className={`px-3 py-1.5 text-xs rounded-md transition-colors ${tab === "fisica" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>Avaliação Física</button>
+                  </div>
+                  {tab === "timeline" && (<>
                   <Select value={tipoFilter} onValueChange={setTipoFilter}>
                     <SelectTrigger className="w-36">
                       <SelectValue />
@@ -252,11 +298,13 @@ export default function Prontuario() {
                   <Button onClick={() => setDialogOpen(true)} size="sm">
                     <Plus className="h-4 w-4 mr-1" /> Novo Registro
                   </Button>
+                  </>)}
                 </div>
               </div>
 
-              {/* Timeline */}
-              {loadingRecords ? (
+              {tab === "fisica" ? (
+                <PhysicalAssessments clientId={selectedClient} />
+              ) : loadingRecords ? (
                 <div className="text-center py-12 text-muted-foreground">Carregando...</div>
               ) : filteredRecords.length === 0 ? (
                 <div className="bg-card rounded-xl border border-border shadow-sm p-12 text-center">
@@ -274,6 +322,7 @@ export default function Prontuario() {
                   <div className="space-y-4">
                     {filteredRecords.map((r) => {
                       const Icon = tipoIcon[r.tipo] || FileText;
+                      const dados = (r as any).dados;
                       return (
                         <div key={r.id} className="relative pl-12">
                           {/* Timeline dot */}
@@ -297,6 +346,22 @@ export default function Prontuario() {
                               </span>
                             </div>
                             <p className="text-sm whitespace-pre-wrap">{r.conteudo}</p>
+                            {dados?.respostas && dados?.template && (
+                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-muted/30 rounded-lg p-3">
+                                <div className="col-span-full font-medium text-foreground/80">{dados.template.nome}</div>
+                                {Object.entries(dados.respostas).map(([k, v]) => (
+                                  v ? (
+                                    <div key={k}><span className="text-muted-foreground capitalize">{k.replace(/_/g, " ")}: </span><span>{String(v)}</span></div>
+                                  ) : null
+                                ))}
+                              </div>
+                            )}
+                            {dados?.body_marks?.length > 0 && (
+                              <div className="mt-3">
+                                <p className="text-xs text-muted-foreground mb-1">Mapa corporal ({dados.body_marks.length} marcação{dados.body_marks.length > 1 ? "es" : ""})</p>
+                                <BodyMap marks={dados.body_marks} onChange={() => {}} readOnly />
+                              </div>
+                            )}
                             <p className="text-xs text-muted-foreground mt-2">
                               Registrado em {format(parseISO(r.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                             </p>
@@ -314,39 +379,64 @@ export default function Prontuario() {
 
       {/* New Record Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Novo Registro — {selectedClientName}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div>
-              <Label>Tipo</Label>
-              <Select value={formTipo} onValueChange={setFormTipo}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="anamnese">Anamnese</SelectItem>
-                  <SelectItem value="evolucao">Evolução</SelectItem>
-                  <SelectItem value="observacao">Observação</SelectItem>
-                  <SelectItem value="alta">Alta</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Tipo</Label>
+                <Select value={formTipo} onValueChange={setFormTipo}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="anamnese">Anamnese</SelectItem>
+                    <SelectItem value="evolucao">Evolução</SelectItem>
+                    <SelectItem value="observacao">Observação</SelectItem>
+                    <SelectItem value="alta">Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Template (opcional)</Label>
+                <Select value={templateId || "none"} onValueChange={(v) => { setTemplateId(v === "none" ? "" : v); setTemplateValues({}); }}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {templates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.categoria} — {t.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
+            {selectedTemplate && (
+              <div className="border border-border rounded-lg p-3 bg-muted/20">
+                <p className="text-xs font-medium mb-2">{selectedTemplate.nome}</p>
+                <TemplateForm campos={selectedTemplate.campos} values={templateValues} onChange={setTemplateValues} />
+              </div>
+            )}
+
             <div>
               <Label>Conteúdo</Label>
               <Textarea
                 value={formConteudo}
                 onChange={(e) => setFormConteudo(e.target.value)}
                 placeholder="Descreva a evolução, observações, queixas..."
-                rows={6}
+                rows={4}
                 className="mt-1"
               />
+            </div>
+
+            <div className="border border-border rounded-lg p-3">
+              <p className="text-xs font-medium mb-2">Mapa corporal</p>
+              <BodyMap marks={bodyMarks} onChange={setBodyMarks} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={() => insertRecord.mutate()} disabled={!formConteudo.trim() || insertRecord.isPending}>
+            <Button onClick={() => insertRecord.mutate()} disabled={insertRecord.isPending}>
               {insertRecord.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
