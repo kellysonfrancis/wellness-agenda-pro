@@ -729,6 +729,72 @@ export type Database = {
           },
         ]
       }
+      invoices: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          motivo_erro: string | null
+          payment_id: string | null
+          pdf_url: string | null
+          provider: string
+          provider_invoice_id: string | null
+          ref: string | null
+          status: string
+          updated_at: string
+          valor: number
+          xml_url: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          motivo_erro?: string | null
+          payment_id?: string | null
+          pdf_url?: string | null
+          provider: string
+          provider_invoice_id?: string | null
+          ref?: string | null
+          status?: string
+          updated_at?: string
+          valor?: number
+          xml_url?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          motivo_erro?: string | null
+          payment_id?: string | null
+          pdf_url?: string | null
+          provider?: string
+          provider_invoice_id?: string | null
+          ref?: string | null
+          status?: string
+          updated_at?: string
+          valor?: number
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       landing_config: {
         Row: {
           banner_url: string | null
@@ -880,6 +946,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      nfse_settings: {
+        Row: {
+          api_key: string | null
+          created_at: string
+          empresa_id: string | null
+          id: string
+          is_active: boolean
+          mode: string
+          provider: string
+          updated_at: string
+          webhook_secret: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          is_active?: boolean
+          mode?: string
+          provider: string
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          is_active?: boolean
+          mode?: string
+          provider?: string
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Relationships: []
       }
       payment_settings: {
         Row: {
