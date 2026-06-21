@@ -112,6 +112,29 @@ export default function VendaRapida() {
   }, [defaultSellerId, defaultSellerType, sellerId]);
 
   const filteredPlans = useMemo(() => plans.filter((p) => p.categoria === categoria), [plans, categoria]);
+
+  const selectedPlanRecord = useMemo(() => {
+    if (!selectedPlanId?.startsWith("plan_")) return null;
+    const id = selectedPlanId.replace("plan_", "");
+    return plans.find((p) => p.id === id) || null;
+  }, [selectedPlanId, plans]);
+  const isRecurringPlan = selectedPlanRecord?.tipo === "mensal_recorrente";
+
+  const createSubscription = useMutation({
+    mutationFn: async (billing_type: "PIX" | "CREDIT_CARD" | "BOLETO") => {
+      if (!selectedPlanRecord || !clientId) throw new Error("Selecione cliente e plano");
+      const { data, error } = await supabase.functions.invoke("create-subscription", {
+        body: { client_id: clientId, plan_id: selectedPlanRecord.id, billing_type },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message || "Erro");
+      return data as { subscription_id: string; payment_url: string | null };
+    },
+    onSuccess: (data) => {
+      toast({ title: "✅ Assinatura criada!", description: data.payment_url ? "Abrindo link de pagamento…" : "Assinatura registrada." });
+      if (data.payment_url) window.open(data.payment_url, "_blank");
+    },
+    onError: (e: any) => toast({ title: "Erro na assinatura", description: e.message, variant: "destructive" }),
+  });
   const filteredServices = useMemo(() => services.filter((s) => s.categoria === categoria), [services, categoria]);
 
   // Unified items for selection
