@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import TemplateForm, { type TemplateField } from "@/components/prontuario/TemplateForm";
 import BodyMap, { type BodyMark } from "@/components/prontuario/BodyMap";
 import PhysicalAssessments from "@/components/prontuario/PhysicalAssessments";
+import EvolutionPhotos from "@/components/prontuario/EvolutionPhotos";
 
 const tipoLabel: Record<string, string> = {
   anamnese: "Anamnese",
@@ -48,7 +49,7 @@ export default function Prontuario() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formTipo, setFormTipo] = useState<string>("evolucao");
   const [formConteudo, setFormConteudo] = useState("");
-  const [tab, setTab] = useState<"timeline" | "fisica">("timeline");
+  const [tab, setTab] = useState<"timeline" | "fisica" | "fotos">("timeline");
   const [templateId, setTemplateId] = useState<string>("");
   const [templateValues, setTemplateValues] = useState<Record<string, any>>({});
   const [bodyMarks, setBodyMarks] = useState<BodyMark[]>([]);
@@ -281,6 +282,7 @@ export default function Prontuario() {
                   <div className="flex rounded-lg border border-border p-0.5 bg-muted/30">
                     <button onClick={() => setTab("timeline")} className={`px-3 py-1.5 text-xs rounded-md transition-colors ${tab === "timeline" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>Timeline</button>
                     <button onClick={() => setTab("fisica")} className={`px-3 py-1.5 text-xs rounded-md transition-colors ${tab === "fisica" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>Avaliação Física</button>
+                    <button onClick={() => setTab("fotos")} className={`px-3 py-1.5 text-xs rounded-md transition-colors ${tab === "fotos" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>Fotos</button>
                   </div>
                   {tab === "timeline" && (<>
                   <Select value={tipoFilter} onValueChange={setTipoFilter}>
@@ -302,7 +304,9 @@ export default function Prontuario() {
                 </div>
               </div>
 
-              {tab === "fisica" ? (
+              {tab === "fotos" ? (
+                <EvolutionPhotos clientId={selectedClient} />
+              ) : tab === "fisica" ? (
                 <PhysicalAssessments clientId={selectedClient} />
               ) : loadingRecords ? (
                 <div className="text-center py-12 text-muted-foreground">Carregando...</div>
