@@ -138,10 +138,11 @@ export default function Financeiro() {
                       <th className="text-left p-4 font-medium text-muted-foreground">Conta Destino</th>
                       <th className="text-left p-4 font-medium text-muted-foreground">Data</th>
                       <th className="text-left p-4 font-medium text-muted-foreground">Recibo</th>
+                      <th className="text-left p-4 font-medium text-muted-foreground">NFS-e</th>
                     </tr></thead>
                     <tbody className="divide-y divide-border">
                       {pagos.length === 0 ? (
-                        <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhum pagamento registrado</td></tr>
+                        <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">Nenhum pagamento registrado</td></tr>
                       ) : pagos.map(p => (
                         <tr key={p.id} className="hover:bg-muted/30">
                           <td className="p-4">{p.client?.nome || "—"}</td>
