@@ -35,6 +35,7 @@ import WhatsAppHistorico from "./pages/WhatsAppHistorico";
 import AgendarPublico from "./pages/AgendarPublico";
 import AssistenteIA from "./pages/AssistenteIA";
 import Estoque from "./pages/Estoque";
+import ClientConsents from "./pages/ClientConsents";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -77,6 +78,7 @@ const App = () => (
             <Route path="/meus-agendamentos" element={<ProtectedRoute roles={["cliente"]}><ClientAppointments /></ProtectedRoute>} />
             <Route path="/meus-pacotes" element={<ProtectedRoute roles={["cliente"]}><ClientPackages /></ProtectedRoute>} />
             <Route path="/minha-evolucao" element={<ProtectedRoute roles={["cliente"]}><ClientEvolution /></ProtectedRoute>} />
+            <Route path="/meus-termos" element={<ProtectedRoute roles={["cliente"]}><ClientConsents /></ProtectedRoute>} />
             <Route path="/assistente" element={<ProtectedRoute roles={["cliente"]}><AssistenteIA /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
