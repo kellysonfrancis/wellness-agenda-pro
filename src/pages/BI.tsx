@@ -11,6 +11,7 @@ import ChartCard from "@/components/bi/ChartCard";
 import { useBIData, PIE_COLORS } from "@/components/bi/useBIData";
 import { exportToExcel, exportToPDF } from "@/components/bi/biExport";
 import { Button } from "@/components/ui/button";
+import NPSCard from "@/components/bi/NPSCard";
 
 export default function BI() {
   const [period, setPeriod] = useState<PeriodFilter>("all");
@@ -236,6 +237,10 @@ export default function BI() {
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
+
+      <div className="mt-6">
+        <NPSCard />
+      </div>
     </GlobalLayout>
   );
 }
