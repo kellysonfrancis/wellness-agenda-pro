@@ -16,6 +16,7 @@ interface DBClient {
   email: string | null;
   data_nascimento: string | null;
   observacoes: string | null;
+  origem_captacao: string | null;
   created_at: string;
 }
 
@@ -48,6 +49,7 @@ const emptyForm = {
   email: "",
   data_nascimento: "",
   observacoes: "",
+  origem_captacao: "",
 };
 
 const CAT_COLORS: Record<string, string> = {
