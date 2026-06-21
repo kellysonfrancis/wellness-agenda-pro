@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Calendar, Users, DollarSign, Sparkles,
   Package, Settings, CalendarPlus, CalendarCheck, ShoppingBag,
   LogOut, Menu, X, BarChart3, Receipt, UserCog, Tags, Stethoscope, HandCoins, ShoppingCart, AlertTriangle, Activity, UserX, TrendingUp, ClipboardList, ListOrdered,
-  MessageSquare, ChevronDown, FolderOpen, FileText, Sun, Moon
+  MessageSquare, ChevronDown, FolderOpen, FileText, Sun, Moon, Boxes
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
@@ -45,6 +45,7 @@ const navEntries: NavEntry[] = [
       { label: "Categorias", path: "/categorias", icon: Tags, roles: ["admin"] },
       { label: "Pacotes", path: "/pacotes", icon: Package, roles: ["admin"] },
       { label: "Comissões", path: "/comissoes", icon: HandCoins, roles: ["admin"] },
+      { label: "Estoque", path: "/estoque", icon: Boxes, roles: ["admin", "recepcao"] },
     ],
   },
   {
