@@ -78,6 +78,7 @@ const navEntries: NavEntry[] = [
   { label: "Meus Agendamentos", path: "/meus-agendamentos", icon: CalendarCheck, roles: ["cliente"] },
   { label: "Meus Pacotes", path: "/meus-pacotes", icon: ShoppingBag, roles: ["cliente"] },
   { label: "Minha Evolução", path: "/minha-evolucao", icon: ClipboardList, roles: ["cliente"] },
+  { label: "Meus Termos", path: "/meus-termos", icon: FileText, roles: ["cliente"] },
   { label: "Assistente IA", path: "/assistente", icon: Sparkles, roles: ["cliente"] },
 ];
 
