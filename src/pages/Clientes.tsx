@@ -16,6 +16,7 @@ interface DBClient {
   email: string | null;
   data_nascimento: string | null;
   observacoes: string | null;
+  origem_captacao: string | null;
   created_at: string;
 }
 
@@ -48,6 +49,7 @@ const emptyForm = {
   email: "",
   data_nascimento: "",
   observacoes: "",
+  origem_captacao: "",
 };
 
 const CAT_COLORS: Record<string, string> = {
@@ -193,6 +195,7 @@ export default function Clientes() {
       email: c.email || "",
       data_nascimento: c.data_nascimento || "",
       observacoes: c.observacoes || "",
+      origem_captacao: c.origem_captacao || "",
     });
     setShowForm(true);
   };
@@ -210,6 +213,7 @@ export default function Clientes() {
       email: form.email.trim() || null,
       data_nascimento: form.data_nascimento || null,
       observacoes: form.observacoes.trim() || null,
+      origem_captacao: form.origem_captacao || null,
     };
 
     if (editingId) {
@@ -535,6 +539,21 @@ export default function Clientes() {
               <div>
                 <label className="text-sm text-muted-foreground">Observações</label>
                 <textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30" rows={2} />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Origem de captação</label>
+                <select
+                  value={form.origem_captacao}
+                  onChange={(e) => setForm({ ...form, origem_captacao: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+                >
+                  <option value="">— Não informado —</option>
+                  <option value="indicacao">Indicação</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="google">Google</option>
+                  <option value="fachada">Fachada</option>
+                  <option value="outro">Outro</option>
+                </select>
               </div>
               <div className="flex gap-2 pt-2">
                 <button type="submit" disabled={saving} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">

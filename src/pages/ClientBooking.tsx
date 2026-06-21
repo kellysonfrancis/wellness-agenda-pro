@@ -108,6 +108,18 @@ export default function ClientBooking() {
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!client?.id || !serviceId || !profId || !selectedDate || !selectedTime) throw new Error("Preencha todos os campos");
+
+      // Block if client has overdue (pendente/parcial) payments
+      const { data: overdue } = await supabase
+        .from("payments")
+        .select("id")
+        .eq("client_id", client.id)
+        .in("status", ["pendente", "parcial"])
+        .limit(1);
+      if (overdue && overdue.length > 0) {
+        throw new Error("Há uma pendência financeira em seu cadastro. Fale com a recepção para regularizar.");
+      }
+
       const [hour, min] = selectedTime.split(":").map(Number);
       const inicio = new Date(`${selectedDate}T${selectedTime}:00`);
       const duracao = selectedService?.duracao_min || 50;

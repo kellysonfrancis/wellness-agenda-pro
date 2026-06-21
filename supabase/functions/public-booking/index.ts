@@ -377,7 +377,7 @@ serve(async (req: Request) => {
       } else {
         const { data: newClient, error: clientError } = await client
           .from("clients")
-          .insert({ nome: nomeSafe, telefone: telSafe, email: emailSafe })
+          .insert({ nome: nomeSafe, telefone: telSafe, email: emailSafe, origem_captacao: (body?.origem_captacao && typeof body.origem_captacao === "string") ? String(body.origem_captacao).slice(0, 40) : null })
           .select("id")
           .single();
 
@@ -387,6 +387,19 @@ serve(async (req: Request) => {
           });
         }
         clientId = newClient.id;
+      }
+
+      // Block clients with outstanding (pendente/parcial) payments
+      const { data: overdue } = await client
+        .from("payments")
+        .select("id")
+        .eq("client_id", clientId)
+        .in("status", ["pendente", "parcial"])
+        .limit(1);
+      if (overdue && overdue.length > 0) {
+        return new Response(JSON.stringify({ error: "Há uma pendência financeira em seu cadastro. Por favor, fale com a recepção." }), {
+          status: 402, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
       }
 
       const { data: appt, error: apptError } = await client

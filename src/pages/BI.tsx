@@ -12,6 +12,7 @@ import { useBIData, PIE_COLORS } from "@/components/bi/useBIData";
 import { exportToExcel, exportToPDF } from "@/components/bi/biExport";
 import { Button } from "@/components/ui/button";
 import NPSCard from "@/components/bi/NPSCard";
+import OrigemCaptacaoCard from "@/components/bi/OrigemCaptacaoCard";
 
 export default function BI() {
   const [period, setPeriod] = useState<PeriodFilter>("all");
@@ -240,6 +241,10 @@ export default function BI() {
 
       <div className="mt-6">
         <NPSCard />
+      </div>
+
+      <div className="mt-6">
+        <OrigemCaptacaoCard />
       </div>
     </GlobalLayout>
   );
