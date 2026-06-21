@@ -1,5 +1,6 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
-import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe, Clock, Palette, QrCode, LogOut } from "lucide-react";
+import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe, Clock, Palette, QrCode, LogOut, CreditCard } from "lucide-react";
+import PaymentProviderSettings from "@/components/configuracoes/PaymentProviderSettings";
 import LandingConfigEditor from "@/components/landing/LandingConfigEditor";
 import TestimonialsEditor from "@/components/landing/TestimonialsEditor";
 import CategorySchedulesEditor from "@/components/agenda/CategorySchedulesEditor";
@@ -314,6 +315,7 @@ export default function Configuracoes() {
         <TabsList className="mb-6">
           <TabsTrigger value="geral"><Settings className="h-4 w-4 mr-1.5" />Geral</TabsTrigger>
           <TabsTrigger value="personalizar"><Palette className="h-4 w-4 mr-1.5" />Personalizar</TabsTrigger>
+          <TabsTrigger value="pagamentos"><CreditCard className="h-4 w-4 mr-1.5" />Pagamentos Online</TabsTrigger>
         </TabsList>
 
         <TabsContent value="geral">
@@ -655,6 +657,10 @@ export default function Configuracoes() {
           <div className="max-w-xl">
             <ThemeCustomizer />
           </div>
+        </TabsContent>
+
+        <TabsContent value="pagamentos">
+          <PaymentProviderSettings />
         </TabsContent>
       </Tabs>
     </GlobalLayout>
