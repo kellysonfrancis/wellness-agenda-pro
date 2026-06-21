@@ -1,6 +1,7 @@
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { Settings, MessageSquare, CheckCircle2, AlertCircle, Plus, Trash2, Loader2, Send, ShieldCheck, XCircle, Globe, Clock, Palette, QrCode, LogOut, CreditCard } from "lucide-react";
 import PaymentProviderSettings from "@/components/configuracoes/PaymentProviderSettings";
+import NfseProviderSettings from "@/components/configuracoes/NfseProviderSettings";
 import LandingConfigEditor from "@/components/landing/LandingConfigEditor";
 import TestimonialsEditor from "@/components/landing/TestimonialsEditor";
 import CategorySchedulesEditor from "@/components/agenda/CategorySchedulesEditor";
@@ -316,6 +317,7 @@ export default function Configuracoes() {
           <TabsTrigger value="geral"><Settings className="h-4 w-4 mr-1.5" />Geral</TabsTrigger>
           <TabsTrigger value="personalizar"><Palette className="h-4 w-4 mr-1.5" />Personalizar</TabsTrigger>
           <TabsTrigger value="pagamentos"><CreditCard className="h-4 w-4 mr-1.5" />Pagamentos Online</TabsTrigger>
+          <TabsTrigger value="nfse"><CreditCard className="h-4 w-4 mr-1.5" />NFS-e</TabsTrigger>
         </TabsList>
 
         <TabsContent value="geral">
@@ -661,6 +663,10 @@ export default function Configuracoes() {
 
         <TabsContent value="pagamentos">
           <PaymentProviderSettings />
+        </TabsContent>
+
+        <TabsContent value="nfse">
+          <NfseProviderSettings />
         </TabsContent>
       </Tabs>
     </GlobalLayout>
