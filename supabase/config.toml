@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.nfse-webhook]
 verify_jwt = false
+
+[functions.generate-tiss-batch]
+verify_jwt = false

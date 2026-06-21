@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Calendar, Users, DollarSign, Sparkles,
   Package, Settings, CalendarPlus, CalendarCheck, ShoppingBag,
   LogOut, Menu, X, BarChart3, Receipt, UserCog, Tags, Stethoscope, HandCoins, ShoppingCart, AlertTriangle, Activity, UserX, TrendingUp, ClipboardList, ListOrdered,
-  MessageSquare, ChevronDown, FolderOpen, FileText, Sun, Moon, Boxes, Brain
+  MessageSquare, ChevronDown, FolderOpen, FileText, Sun, Moon, Boxes, Brain, FileSpreadsheet
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSidebarBadges } from "@/hooks/useSidebarBadges";
@@ -65,6 +65,7 @@ const navEntries: NavEntry[] = [
       { label: "Despesas", path: "/despesas", icon: Receipt, roles: ["admin"] },
       { label: "Inadimplência", path: "/inadimplencia", icon: AlertTriangle, roles: ["admin"] },
       { label: "Projeção Receita", path: "/projecao-receita", icon: TrendingUp, roles: ["admin"] },
+      { label: "TISS / Convênios", path: "/tiss", icon: FileSpreadsheet, roles: ["admin", "recepcao"] },
     ],
   },
   {
