@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.check-entitlement-expiry]
 verify_jwt = false
+
+[functions.check-nps-surveys]
+verify_jwt = false
