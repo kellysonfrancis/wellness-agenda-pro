@@ -36,6 +36,7 @@ import AgendarPublico from "./pages/AgendarPublico";
 import AssistenteIA from "./pages/AssistenteIA";
 import Estoque from "./pages/Estoque";
 import ClientConsents from "./pages/ClientConsents";
+import Insights from "./pages/Insights";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,7 @@ const App = () => (
             <Route path="/churn" element={<ProtectedRoute roles={["admin"]}><Churn /></ProtectedRoute>} />
             <Route path="/projecao-receita" element={<ProtectedRoute roles={["admin"]}><ProjecaoReceita /></ProtectedRoute>} />
             <Route path="/prontuario" element={<ProtectedRoute roles={["admin", "profissional"]}><Prontuario /></ProtectedRoute>} />
+            <Route path="/insights" element={<ProtectedRoute roles={["admin", "profissional"]}><Insights /></ProtectedRoute>} />
             <Route path="/lista-espera" element={<ProtectedRoute roles={["admin", "recepcao"]}><ListaEspera /></ProtectedRoute>} />
             <Route path="/produtividade" element={<ProtectedRoute roles={["admin"]}><Produtividade /></ProtectedRoute>} />
             <Route path="/whatsapp-historico" element={<ProtectedRoute roles={["admin"]}><WhatsAppHistorico /></ProtectedRoute>} />
