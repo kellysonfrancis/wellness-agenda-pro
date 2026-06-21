@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import GlobalLayout from "@/components/layout/GlobalLayout";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBag, CreditCard, AlertTriangle } from "lucide-react";
+import { ShoppingBag, CreditCard, AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function ClientPackages() {
   const { user } = useAuth();
@@ -50,6 +50,19 @@ export default function ClientPackages() {
     enabled: !!client?.id,
   });
 
+  const { data: subscriptions = [] } = useQuery({
+    queryKey: ["my-subscriptions", client?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("id, provider, status, valor, periodicidade, proxima_cobranca, created_at, product_plans(nome)")
+        .eq("client_id", client!.id)
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!client?.id,
+  });
+
   const statusBadge: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     ativo: "default",
     pausado: "secondary",
@@ -76,6 +89,27 @@ export default function ClientPackages() {
         </div>
       ) : (
         <div className="space-y-6">
+          {subscriptions.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-2">
+                <RefreshCw className="h-4 w-4" /> Assinaturas
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {subscriptions.map((s: any) => (
+                  <div key={s.id} className="bg-card rounded-xl border border-border shadow-sm p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold">{s.product_plans?.nome || "Assinatura"}</p>
+                      <Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 capitalize">{s.provider} · {s.periodicidade}</p>
+                    {s.valor && <p className="text-sm mt-2">{fmt(Number(s.valor))}/mês</p>}
+                    {s.proxima_cobranca && <p className="text-xs text-muted-foreground mt-1">Próxima cobrança: {new Date(s.proxima_cobranca).toLocaleDateString("pt-BR")}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Pagamentos pendentes */}
           {pendingPayments.length > 0 && (
             <div>
