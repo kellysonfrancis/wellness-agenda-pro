@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.payment-webhook]
 verify_jwt = false
+
+[functions.check-abandonment]
+verify_jwt = false
